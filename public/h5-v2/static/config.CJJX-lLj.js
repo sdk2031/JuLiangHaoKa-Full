@@ -1,0 +1,1 @@
+import{af as o}from"./index-Cvnqd2fd.js";const i=(i="",e={})=>o({url:i?`/openapi/configh5/getConfig?key=${i}`:"/openapi/configh5/getConfig",method:"GET",...e}),e=()=>i("online_service_url"),n=()=>o({url:"/openapi/config_h5/getQuickLoginConfig",method:"GET",showError:!1});export{i as a,e as b,n as g};

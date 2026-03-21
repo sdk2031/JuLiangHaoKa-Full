@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="200" height="200" role="img" aria-label="NAC avatar logo">
+  <defs>
+    <clipPath id="avatarClip">
+      <circle cx="512" cy="512" r="512" />
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#avatarClip)">
+    <rect width="1024" height="1024" fill="#E6E8EC" />
+
+    <!-- N -->
+    <polygon points="108,684 214,340 348,340 242,684" fill="#0B0B0D" />
+    <polygon points="290,684 396,340 530,340 424,684" fill="#0B0B0D" />
+    <polygon points="248,508 304,452 372,520 316,576" fill="#E6E8EC" />
+
+    <!-- A -->
+    <polygon points="406,684 496,340 620,340 710,684 588,684 565,604 509,604 486,684" fill="#0B0B0D" />
+    <polygon points="542,418 574,546 510,546" fill="#E6E8EC" />
+
+    <!-- C -->
+    <path d="M756 340h196l-25 82h-142c-29 0-53 24-53 53v74c0 29 24 53 53 53h142l25 82H756l-52-126 52-218z" fill="#1F5FC4" />
+  </g>
+</svg>

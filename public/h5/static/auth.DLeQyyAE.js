@@ -1,0 +1,1 @@
+import{d as e,e as n,s,r as o}from"./index-CUgugE_L.js";function t(){const n=e("token"),s=e("userInfo");return!!(n&&s&&s.id)}function i(e="登录已过期，请重新登录"){n("token"),n("userInfo"),n("isGuest"),n("agent_id"),n("username"),s({title:e,icon:"none",duration:2e3}),setTimeout(()=>{o({url:"/pages/login"})},2e3)}export{t as c,i as f};

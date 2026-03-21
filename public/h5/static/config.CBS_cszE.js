@@ -1,0 +1,1 @@
+import{a6 as o}from"./index-C0fLil21.js";const e=()=>((e="")=>o({url:e?`/openapi/configH5/getConfig?key=${e}`:"/openapi/configH5/getConfig",method:"GET"}))("online_service_url"),i=()=>o({url:"/openapi/config_h5/getTemplate",method:"GET",showError:!1}),n=()=>o({url:"/openapi/config_h5/getQuickLoginConfig",method:"GET",showError:!1});export{i as a,e as b,n as g};

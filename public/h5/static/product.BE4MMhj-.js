@@ -1,0 +1,1 @@
+import{d as e,A as n}from"./index-CUgugE_L.js";const o=o=>{const s=e("userInfo"),t={...o};s&&s.id&&(t.agent_id=s.id,t.username=s.username);const r=e("token");return r&&(t.token=r),n("/openapi/Product/index",t)};export{o as g};

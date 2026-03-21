@@ -1,0 +1,1 @@
+import{a0 as o}from"./index-ep8k-i5D.js";const e=()=>((e="")=>o({url:e?`/openapi/configH5/getConfig?key=${e}`:"/openapi/configH5/getConfig",method:"GET"}))("online_service_url"),i=()=>o({url:"/openapi/config_h5/getTemplate",method:"GET",showError:!1});export{e as a,i as g};

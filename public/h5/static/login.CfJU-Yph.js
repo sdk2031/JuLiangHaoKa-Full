@@ -1,0 +1,1 @@
+import{v as a,x as s}from"./index-D04vXDcJ.js";const e=s=>a("/openapi/Auth/login",s),o=()=>s("/openapi/Auth/info"),p=()=>s("/openapi/System/config"),i=s=>a("/openapi/Auth/sendSmsCode",s),n=s=>a("/openapi/Auth/sendEmailCode",s),t=s=>a("/openapi/Auth/register",s);export{p as a,e as b,t as c,n as d,o as g,i as s};

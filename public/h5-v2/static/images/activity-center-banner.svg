@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="204" viewBox="0 0 700 204">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A74DC"/>
+      <stop offset="100%" stop-color="#2A5DD1"/>
+    </linearGradient>
+    <linearGradient id="shape" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7FA7EA" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#6A97E6" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="700" height="204" rx="24" fill="url(#bg)"/>
+  <circle cx="72" cy="90" r="158" fill="#78A3E8" fill-opacity="0.55"/>
+  <circle cx="458" cy="188" r="154" fill="url(#shape)"/>
+  <ellipse cx="640" cy="0" rx="92" ry="54" fill="#6D98E5" fill-opacity="0.55"/>
+  <circle cx="652" cy="-2" r="28" fill="#2F63D4"/>
+
+  <text x="350" y="122" text-anchor="middle" fill="#FFFFFF" font-size="64" font-weight="700" font-family="PingFang SC, Microsoft YaHei, Arial">活动中心</text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
+  <rect width="640" height="420" fill="#f8fafc"/>
+  <rect x="20" y="20" width="600" height="380" rx="12" fill="#ffffff" stroke="#d8dee8" stroke-width="2"/>
+  <text x="320" y="220" font-family="Microsoft YaHei, PingFang SC, Arial, sans-serif" font-size="30" text-anchor="middle" fill="#6b7280">先查询链接，再上传对应证件</text>
+</svg>

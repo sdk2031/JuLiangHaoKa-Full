@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  Options +FollowSymlinks -Multiviews
+  RewriteEngine On
+
+  # 直接访问page/tpl/模板文件的重写规则 (备用方案)
+  RewriteRule ^page/tpl/tpl-(.*?)\.html$ admin/page/tpl/tpl-$1 [R=301,L]
+  RewriteRule ^page/tpl/tpl-(.*)$ admin/page/tpl/tpl-$1 [R=301,L]
+
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^(.*)$ index.php/$1 [QSA,PT,L]
+</IfModule>

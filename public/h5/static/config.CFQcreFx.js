@@ -1,0 +1,1 @@
+import{a8 as o}from"./index-CwEFvYT8.js";const e=(e="")=>o({url:e?`/openapi/configh5/getConfig?key=${e}`:"/openapi/configh5/getConfig",method:"GET"}),i=()=>e("online_service_url"),n=()=>o({url:"/openapi/config_h5/getTemplate",method:"GET",showError:!1}),r=()=>o({url:"/openapi/config_h5/getQuickLoginConfig",method:"GET",showError:!1});export{n as a,i as b,e as c,r as g};

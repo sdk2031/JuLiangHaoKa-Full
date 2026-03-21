@@ -1,0 +1,1 @@
+import{g as e,c as n,s,r as o}from"./index-CaB7a_fI.js";function t(){const n=e("token"),s=e("userInfo");return!!(n&&s&&s.id)}function i(e="登录已过期，请重新登录"){n("token"),n("userInfo"),n("isGuest"),n("agent_id"),n("username"),s({title:e,icon:"none",duration:2e3}),setTimeout(()=>{o({url:"/pages/login"})},2e3)}export{t as c,i as f};
