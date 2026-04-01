@@ -1,0 +1,1 @@
+import{_ as a,r as e,e as s,w as r,i as o,o as t,j as d}from"./index-BR7jIAZk.js";const n=a({onLoad(){e({url:"/pages/product"})}},[["render",function(a,e,n,c,p,u){const i=o;return t(),s(i,{class:"redirect-page"},{default:r(()=>[d("正在跳转...")]),_:1})}],["__scopeId","data-v-03e5beae"]]);export{n as default};

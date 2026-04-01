@@ -108,9 +108,18 @@ return array(
                 'type' => 1,
                 'sort' => 4,
             ),
+            array(
+                'id' => 'self_channel_manage',
+                'name' => '自营渠道',
+                'route' => '/admin/selfchannel/index',
+                'permission' => 'product:self_channel',
+                'type' => 1,
+                'sort' => 5,
+            ),
         ),
     ),
     
+   
     // 4. 订单管理
     array(
         'id' => 'order_manage',
@@ -135,10 +144,19 @@ return array(
             array(
                 'id' => 'order_batch',
                 'name' => '批量处理',
-                'route' => '/admin/order_batch/index',
+                'route' => '/admin/orderbatch/index',
                 'permission' => 'order:batch',
                 'type' => 1,
                 'sort' => 2,
+            ),
+            array(
+                'id' => 'order_cloud_export',
+                'name' => '云表格导出',
+                'route' => '/admin/cloudexport/index',
+                'permission' => 'order:cloud_export',
+                'plugin' => 'wps_excel',
+                'type' => 1,
+                'sort' => 3,
             ),
         ),
     ),
@@ -164,11 +182,21 @@ return array(
                     array('id' => 'agent_edit_btn', 'name' => '编辑代理', 'type' => 2, 'permission' => 'agent:edit', 'visible' => false, 'sort' => 1),
                 ),
             ),
+                array(
+                'id' => 'distribution_level',
+                'name' => '分销等级',
+                'route' => '/admin/distributionlevel/index',
+                'permission' => 'agent:distribution_level',
+                'feature' => 'fixed_distribution',
+                'type' => 1,
+                'sort' => 3,
+            ),
             array(
                 'id' => 'secret_price',
                 'name' => '密价等级',
                 'route' => '/admin/secretpricelevel/index',
                 'permission' => 'agent:price',
+                'plugin' => 'secret_price', 
                 'type' => 1,
                 'sort' => 2,
             ),
@@ -219,8 +247,18 @@ return array(
                 'name' => '支付记录',
                 'route' => '/admin/payment/records',
                 'permission' => 'finance:payment',
+                'plugin' => 'pay_card',
                 'type' => 1,
                 'sort' => 3,
+            ),
+              array(
+                'id' => 'payout_ledger',
+                'name' => '云账户对账单',
+                'route' => '/admin/payoutledger/index',
+                'permission' => 'finance:payout_ledger',
+                'feature' => 'yun_payout',
+                'type' => 1,
+                'sort' => 4,
             ),
         ),
     ),
@@ -322,16 +360,7 @@ return array(
         ),
     ),
     
-    // 10. 短信日志
-    array(
-        'id' => 'sms_log',
-        'name' => '短信日志',
-        'icon' => 'layui-icon-cellphone',
-        'route' => '/admin/sms/logs',
-        'permission' => 'system:sms',
-        'type' => 1,
-        'sort' => 10,
-    ),
+  
     
     // 11. 黑名单
     array(
@@ -371,16 +400,25 @@ return array(
         'permission' => 'h5:manage',  
         'type' => 1,
         'sort' => 12,
-        'plugin' => 'h5', 
         'children' => array(
-            array(
-                'id' => 'h5_config',
-                'name' => '配置管理',
-                'route' => '/admin/configh5/index',
-                'permission' => 'h5:config',
+             array(
+                'id' => 'shop_template_manage',
+                'name' => '店铺管理',
+                'route' => '/admin/shopmanage/index',
+                'permission' => 'shop:template',
                 'type' => 1,
                 'sort' => 1,
             ),
+            array(
+                'id' => 'h5_config',
+                'name' => '代理手机端',
+                'route' => '/admin/configh5/index',
+                'permission' => 'h5:config',
+                'plugin' => 'h5', 
+                'type' => 1,
+                'sort' => 2,
+            ),
+           
         ),
     ),
     
@@ -426,12 +464,21 @@ return array(
                 'sort' => 1,
             ),
             array(
+                'id' => 'sms_log',
+                'name' => '短信日志',
+                'icon' => 'layui-icon-cellphone',
+                'route' => '/admin/sms/logs',
+                'permission' => 'system:sms',
+                'type' => 1,
+                'sort' => 2,
+            ),
+            array(
                 'id' => 'system_backup',
                 'name' => '数据备份',
                 'route' => '/admin/backup/index',
                 'permission' => 'system:backup',
                 'type' => 1,
-                'sort' => 2,
+                'sort' => 3,
             ),
             array(
                 'id' => 'tool',
@@ -439,7 +486,7 @@ return array(
                 'route' => '/admin/tool/index',
                 'permission' => 'tool:index',
                 'type' => 1,
-                'sort' => 3,
+                'sort' => 4,
             ),
         ),
     ),
@@ -455,3 +502,7 @@ return array(
         'sort' => 16,
     ),
 );
+
+
+
+

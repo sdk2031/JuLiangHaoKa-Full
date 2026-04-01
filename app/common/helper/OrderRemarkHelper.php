@@ -5,7 +5,7 @@ namespace app\common\helper;
 class OrderRemarkHelper
 {
     /**
-     * 添加备注到时间线（避免重复）
+     * 添加备注到时间线（避免重复）🆕
      * 
      * @param string $currentRemark 当前备注（可能是旧格式字符串或新格式JSON）
      * @param string $newContent 新备注内容

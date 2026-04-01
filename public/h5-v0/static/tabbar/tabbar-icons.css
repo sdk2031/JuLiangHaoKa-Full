@@ -1,0 +1,48 @@
+/* Tabbar 自定义图标字体 */
+@font-face {
+  font-family: 'tabbar-icons';
+  src: url('data:font/woff2;charset=utf-8;base64,d09GMgABAAAAABEMAAsAAAAAIjAAAAD7AAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHFQGYACEOAqkSJ9zATYCJANMCywABCAFhAoHgQQbMxgVlSRIyH4MuDl4Q8n/////ZxKhbATF2s/s7n0CkQJ2BAosoqpPxT4gK7S1qoYArWh1ZavwtAZAVQpZxc7/70kPGFNRF1IHyqBECN3YqJ5AcJuBCoLbjbvFQzdR68G6FS+9D9n/f+vOVRQBdSAB5B8ACaAM+OMfAGLgD+BvAORPAwD/TwDlTwGMPwdQ/gIA8T8COP4XAMY/BnD+N4Dz7wGcfw8AABAAGQAEQAaABcAC4AF4ADEAIYAPwAfgAfgB+AB+AD5AACAEEAKIAEQAYgAxgBhADCAGEAPIAeQAcgA5gAJAAaAAUAAoABQASgAlgBJACaAEUAKoAFQAKgAVgApADaAGUAOoAdQAagANgAZAA6AB0ABoATQAGgANgBZAC6AF0AJoAXQAOgAdgA5AB6AH0APoAfQAegADgAHAAGAAMAAYAIwARgAjgBHACGAEMAKYAEwAJgATgAnABGACMAOYAcwAZgAzgBnAAmABsABYACwAFgArgBXACmAFsALYAGwANgAbgA3ABmADsAPYAewAdgA7gB3AAeAAcAA4ABwADgAngBPACeAEcAK4AFwALgAXgAvABeACcAG4AdwAbgA3gBvADeAG8AB4ADwAHgAPgAfAA+AB8AD4AHwAPgAfgA/AB+AH8AP4AfwAfgB/AH8AfwB/AH8AfwB/AH8AfwAAgAAgAAgAAgAAgAQgAQgAAgAAgAIgAQgAAgAKgAQgAAgAMgAIgAKgAAgAOgAIgAKgAAgASgAIgAKgAAgAUgAIgAKgAAgAWgAIgAKgAAgAYgAIgAKgAAgAagAIgAKgAAgAcgAIgAKgAAgAegAIgAKgAA==') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.tabbar-icon-font {
+  font-family: 'tabbar-icons';
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 首页图标 */
+.tabbar-icon-home::before {
+  content: '🏠';
+  font-size: 24px;
+}
+
+/* 代理图标 */
+.tabbar-icon-agent::before {
+  content: '📋';
+  font-size: 24px;
+}
+
+/* 订单图标 */
+.tabbar-icon-order::before {
+  content: '📦';
+  font-size: 24px;
+}
+
+/* 客服图标 */
+.tabbar-icon-service::before {
+  content: '💬';
+  font-size: 24px;
+}
+
+/* 我的图标 */
+.tabbar-icon-profile::before {
+  content: '👤';
+  font-size: 24px;
+}

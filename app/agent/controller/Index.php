@@ -1,6 +1,9 @@
 <?php
 namespace app\agent\controller;
 
+use app\common\helper\SystemConfig;
+use app\common\service\AgentService;
+use app\common\service\AgentDomainBrandService;
 use think\facade\Db;
 use think\facade\View;
 use think\facade\Session;
@@ -53,13 +56,25 @@ class Index extends Base
             return redirect('/agent/login');
         }
 
+        if (!AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agentId)) {
+            Session::delete('agent_id');
+            Session::delete('agent_username');
+            Session::delete('agent_info');
+            if (isset($_COOKIE['agent_token'])) {
+                setcookie('agent_token', '', time() - 3600, '/');
+            }
+            return redirect('/agent/login');
+        }
 
-        // 获取代理商基本信息用于显示（关联密价等级表）
+
+        // 获取代理商基本信息用于显示（关联密价等级表、分销等级）
+        $distributionMode = strtolower(trim((string) SystemConfig::get('distribution_level_mode', 'legacy')));
         $agent = Db::table('agents')
             ->alias('a')
             ->leftJoin('secret_price_levels spl', 'a.secret_price_level_id = spl.id')
             ->leftJoin('invite_code ic', 'a.invite_code_id = ic.id')
-            ->field('a.*, spl.level_name as secret_price_level_name, ic.level_name as agent_level_name')
+            ->leftJoin('distribution_level dl', 'a.distribution_level_id = dl.id')
+            ->field('a.*, spl.level_name as secret_price_level_name, ic.level_name as agent_level_name, dl.level_name as distribution_level_name')
             ->where('a.id', $agentId)
             ->find();
         if (!$agent) {
@@ -72,6 +87,18 @@ class Index extends Base
             $agent['agent_level_text'] = '平台直属代理';
         } else {
             $agent['agent_level_text'] = $agent['agent_level_name'] ?: '普通代理';
+        }
+
+        // 分销等级模式适配：
+        // fixed 模式优先显示固定分销等级，legacy 模式沿用邀请码等级
+        if ($distributionMode === 'fixed') {
+            if (!empty($agent['distribution_level_name'])) {
+                $agent['agent_level_text'] = $agent['distribution_level_name'];
+            } elseif ((int)$agent['parent_id'] === 0) {
+                $agent['agent_level_text'] = '平台直属代理';
+            } else {
+                $agent['agent_level_text'] = '普通代理';
+            }
         }
 
         // 安全检查：验证是否通过管理员切换过来的
@@ -332,13 +359,13 @@ class Index extends Base
                 $result[$config['config_key']] = $value;
             }
 
-            return $result;
+            return AgentDomainBrandService::applyBrandConfig($result);
         } catch (\Exception $e) {
             // 返回默认配置
-            return [
+            return AgentDomainBrandService::applyBrandConfig([
                 'site_name' => '流量卡管理系统',
                 'site_copyright' => '© 2024 流量卡管理系统'
-            ];
+            ]);
         }
     }
 
@@ -375,8 +402,21 @@ class Index extends Base
         $monthStartStr = date('Y-m-01 00:00:00');
         $monthEndStr = date('Y-m-t 23:59:59');
 
-        // 获取代理的店铺信息
+        // 获取代理的店铺信息（自动修复：无店铺则创建，空shop_code则补齐）
         $shopInfo = Db::table('agent_shop')->where('agent_id', $agentId)->find();
+        if (!$shopInfo) {
+            $createResult = AgentService::createShop((int)$agentId);
+            if (!empty($createResult['code'])) {
+                $shopInfo = Db::table('agent_shop')->where('agent_id', $agentId)->find();
+            }
+        }
+        if ($shopInfo && empty($shopInfo['shop_code'])) {
+            $newShopCode = $this->generateUniqueShopCode();
+            Db::table('agent_shop')->where('id', $shopInfo['id'])->update([
+                'shop_code' => $newShopCode
+            ]);
+            $shopInfo['shop_code'] = $newShopCode;
+        }
         $shopId = $shopInfo ? $shopInfo['id'] : 0;
 
         // 1. 访问量数据 - 从agent_shop表获取
@@ -708,5 +748,17 @@ class Index extends Base
             return round($number / 10000, 1) . ' 万';
         }
         return number_format($number);
+    }
+
+    /**
+     * 生成唯一店铺编码
+     */
+    private function generateUniqueShopCode()
+    {
+        $shopCode = bin2hex(random_bytes(4));
+        while (Db::table('agent_shop')->where('shop_code', $shopCode)->find()) {
+            $shopCode = bin2hex(random_bytes(4));
+        }
+        return $shopCode;
     }
 }

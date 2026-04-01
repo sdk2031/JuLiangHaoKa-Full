@@ -141,6 +141,24 @@ class Cron
             );
         }
 
+        // 每分钟执行云账户失败打款重试任务
+        try {
+            $payoutRetryResult = $this->runPayoutRetryTask();
+            if (($payoutRetryResult['total'] ?? 0) > 0) {
+                $results[] = array(
+                    'api' => '云账户',
+                    'task' => 'payout_retry',
+                    'result' => "处理 {$payoutRetryResult['total']} 笔，成功 {$payoutRetryResult['success']} 笔，失败 {$payoutRetryResult['failed']} 笔"
+                );
+            }
+        } catch (\Exception $e) {
+            $results[] = array(
+                'api' => '云账户',
+                'task' => 'payout_retry',
+                'result' => '打款重试失败: ' . $e->getMessage()
+            );
+        }
+
         $configs = Db::name('config_api')->where('status', 1)->select()->toArray();
 
         foreach ($configs as $config) {
@@ -235,8 +253,17 @@ class Cron
         
         if (count($results) > 0) {
             $logLines = array('[Cron] 调度完成，执行了 ' . count($results) . ' 个任务:');
+            $taskMap = array(
+                'product_sync' => '商品同步',
+                'order_sync' => '订单查询',
+                'callback_retry' => '回调重试',
+                'payout_retry' => '打款重试',
+                'generate_images' => '商品转图',
+                'reset_daily_stats' => '日统计重置',
+                'reset_monthly_stats' => '月统计重置'
+            );
             foreach ($results as $r) {
-                $taskName = ($r['task'] == 'product_sync') ? '商品同步' : '订单查询';
+                $taskName = isset($taskMap[$r['task']]) ? $taskMap[$r['task']] : $r['task'];
                 $logLines[] = '  - [' . $taskName . '] ' . $r['api'] . ': ' . $r['result'];
             }
             trace(implode("\n", $logLines), 'error');
@@ -991,6 +1018,16 @@ class Cron
         }
 
         return $result;
+    }
+
+    /**
+     * 执行云账户失败打款重试任务
+     * @return array
+     */
+    private function runPayoutRetryTask()
+    {
+        $controller = new Payout();
+        return $controller->runRetryJob(20);
     }
 
     /**

@@ -38,6 +38,7 @@ class HaokyApi
      */
     public function __construct($config = [])
     {
+        
         $this->baseUrl = rtrim($config['api_url'] ?? 'https://server.gantanhao.com/api/api', '/');
         $this->apiKey = $config['api_key'] ?? '';
         $this->status = intval($config['status'] ?? 0);
@@ -205,13 +206,6 @@ class HaokyApi
                 ];
             }
             
-            // 添加调试日志
-            if (function_exists('trace')) {
-                trace('[卡业联盟] 发送请求：' . $requestUrl, 'debug');
-                trace('[卡业联盟] 发送请求头：Content-Type: application/json, Accept: application/json', 'debug');
-                trace('[卡业联盟] 发送请求体：' . $jsonData, 'debug');
-            }
-            
             curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
             curl_setopt($ch, CURLOPT_TIMEOUT, 60); // 增加超时时间到60秒
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -226,11 +220,9 @@ class HaokyApi
             
             // 记录详细的curl信息
             if (function_exists('trace')) {
-                trace('[卡业联盟] HTTP状态码：' . $httpCode, 'debug');
                 if ($error) {
                     trace('[卡业联盟] CURL错误：' . $error . ' (错误码：' . $errno . ')', 'error');
                 }
-                trace('[卡业联盟] 响应长度：' . strlen($response) . ' 字节', 'debug');
             }
             
             curl_close($ch);
@@ -261,23 +253,13 @@ class HaokyApi
             // 记录响应
             if (function_exists('trace')) {
                 trace('[卡业联盟] 响应内容: ' . substr($response, 0, 1000) . (strlen($response) > 1000 ? '...' : ''), 'info');
-                trace('[卡业联盟] 完整响应内容: ' . $response, 'debug');
-                trace('[卡业联盟] HTTP状态码: ' . $httpCode, 'debug');
             }
             
             // 检查API返回状态码 - 卡业联盟API返回200表示成功
             if ($result['code'] == 200) {
-                // 记录更详细的日志
-                if (function_exists('trace')) {
-                    trace('[卡业联盟] API返回成功，代码: ' . $result['code'], 'debug');
-                    trace('[卡业联盟] API返回消息: ' . ($result['msg'] ?? '无消息'), 'debug');
-                }
-                
                 // 处理成功响应，提取号码
                 $numbers = [];
                 if (isset($result['result']) && is_array($result['result'])) {
-                    trace('[卡业联盟] 原始号码数据: ' . json_encode($result['result'], JSON_UNESCAPED_UNICODE), 'debug');
-                    
                     foreach ($result['result'] as $item) {
                         if (isset($item['mobile']) && !empty($item['mobile'])) {
                             $numberObj = [
@@ -589,10 +571,6 @@ class HaokyApi
                     ]);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
                     
-                    // 记录完整的JSON请求体
-                    if (function_exists('trace')) {
-                        trace('[卡业联盟] 请求体JSON: ' . $postData, 'debug');
-                    }
                 } else {
                     // 使用表单格式
                     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
@@ -616,12 +594,6 @@ class HaokyApi
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
             $requestHeader = curl_getinfo($ch, CURLINFO_HEADER_OUT); // 获取发送的请求头
-            
-            // 记录HTTP请求头和响应头（调试用）
-            if (function_exists('trace')) {
-                trace('[卡业联盟] 请求头: ' . $requestHeader, 'debug');
-                trace('[卡业联盟] 响应状态码: ' . $httpCode, 'debug');
-            }
             
             curl_close($ch);
             

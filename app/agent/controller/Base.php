@@ -1,6 +1,7 @@
 <?php
 namespace app\agent\controller;
 
+use app\common\service\AgentDomainBrandService;
 use think\facade\Session;
 
 class Base
@@ -52,6 +53,7 @@ class Base
 
         // 检查登录状态
         $agentId = Session::get('agent_id');
+        $domainDenied = false;
 
         // 如果Session中没有，尝试通过token验证
         if (!$agentId) {
@@ -64,20 +66,34 @@ class Base
                     ->find();
                 
                 if ($agent) {
+                    if (!AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agent['id'])) {
+                        $domainDenied = true;
+                        if (isset($_COOKIE['agent_token'])) {
+                            setcookie('agent_token', '', time() - 3600, '/');
+                        }
+                    } else {
                     // token有效，恢复Session
-                    Session::set('agent_id', $agent['id']);
-                    Session::set('agent_username', $agent['username']);
-                    Session::set('agent_info', $agent);
-                    
-                    $agentId = $agent['id'];
+                        Session::set('agent_id', $agent['id']);
+                        Session::set('agent_username', $agent['username']);
+                        Session::set('agent_info', $agent);
+                        
+                        $agentId = $agent['id'];
+                    }
                 }
             }
+        }
+
+        if ($agentId && !AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agentId)) {
+            $domainDenied = true;
+            $this->clearAgentAuth();
+            $agentId = 0;
         }
 
         if (!$agentId) {
             // Ajax请求返回JSON
             if (request()->isAjax()) {
-                json(['code' => 1, 'msg' => '请先登录', 'url' => '/agent/login'])->send();
+                $msg = $domainDenied ? '当前域名无访问权限，请使用所属代理域名登录' : '请先登录';
+                json(['code' => 1, 'msg' => $msg, 'url' => '/agent/login'])->send();
                 exit;
             }
             // 普通请求跳转到登录页
@@ -86,6 +102,22 @@ class Base
         }
         
         return true;
+    }
+
+    /**
+     * 清理代理登录态
+     */
+    protected function clearAgentAuth()
+    {
+        Session::delete('agent_id');
+        Session::delete('agent_username');
+        Session::delete('agent_info');
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            Session::save();
+        }
+        if (isset($_COOKIE['agent_token'])) {
+            setcookie('agent_token', '', time() - 3600, '/');
+        }
     }
     
     /**

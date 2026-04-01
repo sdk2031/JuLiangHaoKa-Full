@@ -26,7 +26,15 @@
           function finish(v) {
             if (done) return;
             done = true;
-            callback(v === "v2" ? "v2" : "v1");
+            if (v === "v2") {
+              callback("v2");
+              return;
+            }
+            if (v === "v0") {
+              callback("v0");
+              return;
+            }
+            callback("v1");
           }
           function parseAndFinish(text) {
             try {
@@ -72,7 +80,12 @@
         }
 
         function loadVersion(version) {
-          var basePath = version === "v2" ? "/h5-v2" : "/h5-v1";
+          var basePath = "/h5-v1";
+          if (version === "v2") {
+            basePath = "/h5-v2";
+          } else if (version === "v0") {
+            basePath = "/h5-v0";
+          }
           var targetIndex = basePath + "/index.html?_ts=" + Date.now();
           var hardDone = false;
           var hardTimer = setTimeout(function () {

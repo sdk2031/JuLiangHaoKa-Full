@@ -9,7 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use app\common\helper\AuHelper;
 
-class OrderBatch extends Base
+class Orderbatch extends Base
 {
     public function __construct()
     {
@@ -894,3 +894,4 @@ class OrderBatch extends Base
         }
     }
 }
+
