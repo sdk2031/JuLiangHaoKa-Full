@@ -13,7 +13,7 @@ return array(
     'last_update_check' => '',
     'version_name' => 'v2.2.2',
     'version_update_time' => '',
-    'app_name' => '巨量号卡',
+    'app_name' => '巨量 号卡',
     'agent_wechat' => '',
 );
 ?>
