@@ -1504,6 +1504,7 @@ CREATE TABLE `product`  (
   `dingxiang` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '定向流量(GB)',
   `order_process` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '下单流程JSON',
   `product_popup` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '产品弹窗内容',
+  `submit_success_info` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '提单后信息',
   `call` decimal(10, 2) NULL DEFAULT 0.00 COMMENT 'call minutes or price per minute',
   `sms` int(11) NULL DEFAULT 0 COMMENT '短信(条)',
   `first_chongzhi` int(11) NULL DEFAULT NULL COMMENT '首充金额(50或100)',
