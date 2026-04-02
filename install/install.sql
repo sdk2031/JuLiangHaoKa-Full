@@ -364,7 +364,7 @@ DROP TABLE IF EXISTS `agent_payment_methods`;
 CREATE TABLE `agent_payment_methods`  (
   `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `agent_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '代理商ID',
-  `payment_type` enum('alipay','bank') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'alipay' COMMENT '收款方式：alipay=支付宝,bank=银行卡',
+  `payment_type` enum('alipay','bank','wechat') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'alipay' COMMENT '收款方式：alipay=支付宝,bank=银行卡,wechat=微信',
   `account` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款账户',
   `account_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款人姓名',
   `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '银行名称（银行卡专用）',
@@ -502,6 +502,11 @@ CREATE TABLE `agents`  (
   `salt` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '密码盐',
   `status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '状态0封禁  1正常',
   `invite_code_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '邀请码ID',
+  `distribution_level_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '固定分销等级ID（fixed模式使用）',
+  `agent_custom_domain` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'agent_代理自定义域名(仅host)',
+  `agent_custom_domain_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'agent_代理自定义域名启用状态',
+  `agent_custom_site_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'agent_代理自定义系统名称',
+  `agent_custom_logo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'agent_代理自定义Logo',
   `agent_level` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal' COMMENT '代理级别',
   `secret_price_level_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '密价等级ID',
   `auto_markup_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否启用自动加价(0-否,1-是)',
@@ -523,6 +528,9 @@ CREATE TABLE `agents`  (
   UNIQUE INDEX `mobile`(`mobile`) USING BTREE,
   UNIQUE INDEX `uk_wechat_openid`(`wechat_openid`) USING BTREE,
   UNIQUE INDEX `uk_qq_openid`(`qq_openid`) USING BTREE,
+  UNIQUE INDEX `uk_agent_custom_domain`(`agent_custom_domain`) USING BTREE,
+  INDEX `idx_distribution_level_id`(`distribution_level_id`) USING BTREE,
+  INDEX `idx_agent_custom_domain_enabled`(`agent_custom_domain_enabled`) USING BTREE,
   INDEX `idx_secret_price_level`(`secret_price_level_id`) USING BTREE,
   INDEX `idx_token`(`token`) USING BTREE,
   INDEX `idx_api_enabled`(`api_enabled`) USING BTREE,
@@ -568,6 +576,52 @@ CREATE TABLE `available_numbers`  (
 -- ----------------------------
 -- Records of available_numbers
 -- ----------------------------
+
+-- ----------------------------
+-- Table structure for config_cloudexport
+-- ----------------------------
+DROP TABLE IF EXISTS `config_cloudexport`;
+CREATE TABLE `config_cloudexport`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL DEFAULT 0 COMMENT '产品ID，0=按渠道导出',
+  `api_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '渠道名称（自营/上游名）',
+  `self_channel_id` int(11) NOT NULL DEFAULT 0 COMMENT '自营渠道ID（非自营为0）',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '备注',
+  `export_fields` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '导出字段，逗号分隔',
+  `export_column_map` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '字段到列号映射JSON',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_product_channel`(`product_id`, `api_name`, `self_channel_id`) USING BTREE,
+  INDEX `idx_product_id`(`product_id`) USING BTREE,
+  INDEX `idx_self_channel_id`(`self_channel_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '云导出配置' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of config_cloudexport
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for self_channel
+-- ----------------------------
+DROP TABLE IF EXISTS `self_channel`;
+CREATE TABLE `self_channel`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '渠道名称',
+  `code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '渠道编码(唯一)',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态(0禁用 1启用)',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_code`(`code`) USING BTREE,
+  INDEX `idx_status`(`status`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '自营渠道表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of self_channel
+-- ----------------------------
+INSERT INTO `self_channel` VALUES (1, '默认渠道', 'default', 1, '系统默认自营渠道', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ----------------------------
 -- Table structure for blacklist
@@ -948,6 +1002,31 @@ CREATE TABLE `invite_code`  (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for distribution_level
+-- ----------------------------
+DROP TABLE IF EXISTS `distribution_level`;
+CREATE TABLE `distribution_level`  (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '等级ID',
+  `level_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '等级名称',
+  `level_order` int(11) NOT NULL DEFAULT 1 COMMENT '等级序号，值越小级别越高',
+  `commission` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '上级对该等级的固定抽佣金额',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态 0=禁用 1=启用',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT '' COMMENT '备注',
+  `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
+  `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_level_order`(`level_order`) USING BTREE,
+  INDEX `idx_status_order`(`status`, `level_order`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '固定分销等级表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of distribution_level
+-- ----------------------------
+INSERT INTO `distribution_level` VALUES (1, '一级代理', 1, 0.00, 1, '最高等级', 0, 0);
+INSERT INTO `distribution_level` VALUES (2, '二级代理', 2, 5.00, 1, '可开三级', 0, 0);
+INSERT INTO `distribution_level` VALUES (3, '三级代理', 3, 3.00, 1, '最低等级', 0, 0);
+
+-- ----------------------------
 -- Table structure for messages
 -- ----------------------------
 DROP TABLE IF EXISTS `messages`;
@@ -985,6 +1064,7 @@ CREATE TABLE `order`  (
   `up_order_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '上游渠道订单号',
   `api_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '渠道名称',
   `api_config_id` int(11) NULL DEFAULT 0 COMMENT 'API配置ID（用于多配置API）',
+  `self_channel_id` int(11) NOT NULL DEFAULT 0 COMMENT '自营渠道ID（非自营为0）',
   `shop_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '店铺代码',
   `product_id` int(11) NULL DEFAULT NULL COMMENT '对接产品ID',
   `product_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '商品名称',
@@ -1011,10 +1091,11 @@ CREATE TABLE `order`  (
   `id_card_count` int(11) NULL DEFAULT 0 COMMENT '身份证订单数量',
   `phone_count` int(11) NULL DEFAULT 0 COMMENT '手机号订单数量',
   `commission` decimal(10, 2) NULL DEFAULT 0.00 COMMENT '佣金',
-  `js_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '1' COMMENT '结算模式(1-次月返,2次月返)',
+  `js_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '1' COMMENT '结算模式(1-秒返,2-次月返,3-月月返)',
   `recharge_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '0' COMMENT '充值状态(1-已充值,0-待更新)',
   `recharge_amount` decimal(10, 2) NULL DEFAULT 0.00 COMMENT '充值金额',
   `production_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '生产号码',
+  `iccid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'ICCID',
   `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `jh_time` datetime NULL DEFAULT NULL COMMENT '激活时间',
@@ -1055,6 +1136,8 @@ CREATE TABLE `order`  (
   INDEX `idx_multi_filter`(`order_status`, `shop_code`, `create_time`) USING BTREE,
   INDEX `idx_agent_change_time`(`agent_change_time`) USING BTREE,
   INDEX `idx_api_config_id`(`api_config_id`) USING BTREE,
+  INDEX `idx_self_channel_id`(`self_channel_id`) USING BTREE,
+  INDEX `idx_iccid`(`iccid`) USING BTREE,
   INDEX `idx_flag_color`(`flag_color`) USING BTREE,
   INDEX `idx_jh_time`(`jh_time`) USING BTREE,
   INDEX `idx_js_time`(`js_time`) USING BTREE,
@@ -1398,6 +1481,7 @@ CREATE TABLE `product`  (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '产品名称',
   `number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '对接编号',
   `api_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '对接上游名称',
+  `self_channel_id` int(11) NOT NULL DEFAULT 0 COMMENT '自营渠道ID（非自营为0）',
   `api_config_id` int(11) NULL DEFAULT 0 COMMENT 'API配置ID（用于多配置API）',
   `yys` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '运营商(移动/联通/电信/广电)',
   `product_image` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '产品首图',
@@ -1417,6 +1501,9 @@ CREATE TABLE `product`  (
   `hot_sort` int(11) NULL DEFAULT 0 COMMENT '热门排序权重，数字越大越靠前',
   `tags` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '产品标签',
   `flow` int(11) NULL DEFAULT 0 COMMENT '流量(GB)',
+  `dingxiang` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '定向流量(GB)',
+  `order_process` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '下单流程JSON',
+  `product_popup` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '产品弹窗内容',
   `call` decimal(10, 2) NULL DEFAULT 0.00 COMMENT 'call minutes or price per minute',
   `sms` int(11) NULL DEFAULT 0 COMMENT '短信(条)',
   `first_chongzhi` int(11) NULL DEFAULT NULL COMMENT '首充金额(50或100)',
@@ -1437,6 +1524,7 @@ CREATE TABLE `product`  (
   `card_price` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '卡费金额（付费卡时有效）',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_api_config_id`(`api_config_id`) USING BTREE,
+  INDEX `idx_self_channel_id`(`self_channel_id`) USING BTREE,
   INDEX `idx_admin_sort`(`admin_sort_order`) USING BTREE,
   INDEX `idx_recommend`(`is_recommend`) USING BTREE,
   INDEX `idx_is_open`(`is_open`) USING BTREE
@@ -1670,7 +1758,7 @@ CREATE TABLE `system_config`  (
 -- ----------------------------
 -- Records of system_config
 -- ----------------------------
-INSERT INTO `system_config` VALUES (1, 'site_name', '', 'text', 'basic', '网站名称', '网站的名称，显示在浏览器标题栏', NULL, 1, 0, 1756710628, 1759390676);
+INSERT INTO `system_config` VALUES (1, 'site_name', '巨量号卡', 'text', 'basic', '网站名称', '网站的名称，显示在浏览器标题栏', NULL, 1, 0, 1756710628, 1759390676);
 INSERT INTO `system_config` VALUES (2, 'site_logo', '/logo.png', 'image', 'basic', '网站Logo', '网站的Logo图片', NULL, 2, 0, 1756710628, 1759390676);
 INSERT INTO `system_config` VALUES (3, 'site_favicon', '/favicon.ico', 'image', 'basic', '网站图标', '网站的favicon图标', NULL, 3, 0, 1756710628, 1759390676);
 INSERT INTO `system_config` VALUES (4, 'site_keywords', '流量卡,手机卡,电话卡', 'text', 'basic', '网站关键词', 'SEO关键词，多个用逗号分隔', NULL, 4, 0, 1756710628, 1756720756);
@@ -1723,6 +1811,7 @@ INSERT INTO `system_config` VALUES (81, 'express_api_path', '/express/query-v2',
 INSERT INTO `system_config` VALUES (82, 'agent_id_start', '1', 'text', 'other', 'agent_id_start', '', NULL, 0, 0, 1757931854, 1770564897);
 INSERT INTO `system_config` VALUES (83, 'order_prefix', 'HK', 'text', 'other', '订单号前缀', '', NULL, 0, 0, 1757932983, 1770564897);
 INSERT INTO `system_config` VALUES (84, 'agent_resubmit_order_enabled', '1', 'text', 'basic', '代理重提开关', '', NULL, 0, 0, 1759564234, 1770564897);
+INSERT INTO `system_config` VALUES (85, 'distribution_level_mode', 'legacy', 'radio', 'other', '分销等级模式', 'legacy=代理自定义等级，fixed=总后台固定等级', NULL, 0, 0, 1774296000, 1774296000);
 
 -- ----------------------------
 -- Table structure for temp_orders
@@ -1890,6 +1979,96 @@ CREATE TABLE `version_sql_logs`  (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for payout_provider_configs
+-- ----------------------------
+DROP TABLE IF EXISTS `payout_provider_configs`;
+CREATE TABLE `payout_provider_configs`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `provider_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '渠道标识，如 yun_account',
+  `provider_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '渠道名称',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否启用',
+  `auto_payout_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否自动打款',
+  `auto_min_amount` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '自动打款最小金额',
+  `auto_max_amount` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '自动打款最大金额(0表示不限制)',
+  `config_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '配置JSON(商户号/密钥/证书等)',
+  `last_balance` decimal(16, 2) NOT NULL DEFAULT 0.00 COMMENT '最近余额缓存',
+  `last_balance_time` int(11) NOT NULL DEFAULT 0 COMMENT '余额更新时间戳',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '备注',
+  `create_time` int(11) NOT NULL DEFAULT 0,
+  `update_time` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_provider_key`(`provider_key`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '通用打款渠道配置' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of payout_provider_configs
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for agent_payout_contracts
+-- ----------------------------
+DROP TABLE IF EXISTS `agent_payout_contracts`;
+CREATE TABLE `agent_payout_contracts`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `agent_id` int(11) NOT NULL COMMENT '代理ID',
+  `provider_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '渠道标识',
+  `contract_status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '签约状态 0未签约 1签约中 2已签约 3失败',
+  `contract_no` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约单号/协议号',
+  `bind_channel` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '绑定渠道(wechat/alipay/bankcard)',
+  `openid` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '微信openid(如需要)',
+  `unionid` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '微信unionid',
+  `mobile` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约手机号',
+  `real_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约实名',
+  `id_card` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约证件号',
+  `sign_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约引导链接',
+  `raw_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '签约原始报文(JSON)',
+  `fail_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '失败原因',
+  `signed_at` int(11) NOT NULL DEFAULT 0 COMMENT '签约完成时间戳',
+  `create_time` int(11) NOT NULL DEFAULT 0,
+  `update_time` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_agent_provider`(`agent_id`, `provider_key`) USING BTREE,
+  INDEX `idx_provider_status`(`provider_key`, `contract_status`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '代理打款签约绑定表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of agent_payout_contracts
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for payout_trade_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `payout_trade_logs`;
+CREATE TABLE `payout_trade_logs`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `withdraw_id` int(11) NOT NULL DEFAULT 0 COMMENT '提现单ID',
+  `withdraw_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '提现单号',
+  `agent_id` int(11) NOT NULL DEFAULT 0 COMMENT '代理ID',
+  `provider_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '打款渠道标识',
+  `payout_channel` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '打款渠道',
+  `idempotency_key` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '幂等键',
+  `provider_order_no` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '通道单号',
+  `amount` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '打款金额',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'processing' COMMENT 'processing/success/failed',
+  `request_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '请求报文',
+  `response_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '响应报文',
+  `callback_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '回调报文',
+  `fail_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '失败原因',
+  `retry_count` int(11) NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `create_time` int(11) NOT NULL DEFAULT 0,
+  `update_time` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_idempotency_key`(`idempotency_key`) USING BTREE,
+  INDEX `idx_withdraw_id`(`withdraw_id`) USING BTREE,
+  INDEX `idx_provider_order_no`(`provider_order_no`) USING BTREE,
+  INDEX `idx_status_update_time`(`status`, `update_time`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '通用打款流水日志' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of payout_trade_logs
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for withdraws
 -- ----------------------------
 DROP TABLE IF EXISTS `withdraws`;
@@ -1898,7 +2077,20 @@ CREATE TABLE `withdraws`  (
   `withdraw_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '提现编号',
   `agent_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '代理商ID',
   `payment_method_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '收款方式ID（关联agent_payment_methods表）',
-  `withdraw_type` enum('alipay','bank') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'alipay' COMMENT '提现方式：alipay=支付宝,bank=银行卡',
+  `withdraw_type` enum('alipay','bank','wechat') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'alipay' COMMENT '提现方式：alipay=支付宝,bank=银行卡,wechat=微信',
+  `payout_provider_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '打款通道标识(yun_account/alipay_merchant/...)',
+  `payout_channel` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '打款渠道(wechat/alipay/bankcard)',
+  `payout_order_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '通道打款单号',
+  `payout_idempotency_key` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '幂等键',
+  `payout_request_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '打款请求报文(JSON)',
+  `payout_response_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '打款响应报文(JSON)',
+  `payout_callback_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'none' COMMENT '回调状态(none/processing/success/failed)',
+  `payout_callback_payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '回调报文(JSON)',
+  `payout_fail_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '失败原因',
+  `payout_retry_count` int(11) NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `payout_last_retry_time` int(11) NOT NULL DEFAULT 0 COMMENT '最后重试时间戳',
+  `payout_risk_pass` tinyint(1) NOT NULL DEFAULT 1 COMMENT '风控是否通过(1通过0拦截)',
+  `payout_success_time` int(11) NOT NULL DEFAULT 0 COMMENT '打款成功时间戳',
   `account` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款账户',
   `account_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款人姓名',
   `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '银行名称（银行卡专用）',
@@ -1906,7 +2098,7 @@ CREATE TABLE `withdraws`  (
   `amount` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '申请金额',
   `fee` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '手续费',
   `actual_amount` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '实际到账金额',
-  `status` enum('pending','success','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending' COMMENT '状态：pending=待处理,success=已完成,rejected=已拒绝',
+  `status` enum('pending','processing','success','failed','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending' COMMENT '状态：pending=待处理,processing=处理中,success=已完成,failed=打款失败,rejected=已拒绝',
   `remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '申请备注',
   `admin_remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '管理员处理备注',
   `create_time` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '申请时间',
@@ -1918,7 +2110,13 @@ CREATE TABLE `withdraws`  (
   INDEX `status`(`status`) USING BTREE,
   INDEX `create_time`(`create_time`) USING BTREE,
   INDEX `idx_agent_status`(`agent_id`, `status`) USING BTREE,
-  INDEX `idx_status_time`(`status`, `create_time`) USING BTREE
+  INDEX `idx_status_time`(`status`, `create_time`) USING BTREE,
+  INDEX `idx_payout_provider`(`payout_provider_key`) USING BTREE,
+  INDEX `idx_payout_channel`(`payout_channel`) USING BTREE,
+  INDEX `idx_payout_order_no`(`payout_order_no`) USING BTREE,
+  INDEX `idx_payout_callback_status`(`payout_callback_status`) USING BTREE,
+  INDEX `idx_payout_success_time`(`payout_success_time`) USING BTREE,
+  UNIQUE INDEX `uk_payout_idempotency`(`payout_idempotency_key`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 25 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '提现申请表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------

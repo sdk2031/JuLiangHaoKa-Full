@@ -4,13 +4,10 @@
  */
 
 /**
- * 获取项目URL
+ * 获取二维码API的URL（使用绝对路径）
  */
-function getProjectUrl() {
-    var path = window.location.pathname;
-    var pathArray = path.split('/');
-    pathArray.pop(); // 移除文件名
-    return window.location.protocol + '//' + window.location.host + pathArray.join('/') + '/';
+function getQrcodeApiUrl() {
+    return window.location.protocol + '//' + window.location.host + '/qrcode.php';
 }
 
 /**
@@ -24,14 +21,13 @@ function generateQRCode(text, callback, options) {
     var size = options.width || options.height || 200;
 
     if (!text || !text.trim()) {
-        console.error('二维码文本不能为空');
         if (callback) callback(null);
         return;
     }
 
     try {
         var xhr = new XMLHttpRequest();
-        var url = getProjectUrl() + 'qrcode.php?text=' + encodeURIComponent(text) + '&size=' + size + '&format=base64';
+        var url = getQrcodeApiUrl() + '?text=' + encodeURIComponent(text) + '&size=' + size + '&format=base64';
         
         xhr.open('GET', url, true);
         xhr.timeout = 15000; // 15秒超时
