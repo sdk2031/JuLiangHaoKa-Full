@@ -1019,12 +1019,25 @@ CREATE TABLE `distribution_level`  (
   INDEX `idx_status_order`(`status`, `level_order`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '固定分销等级表' ROW_FORMAT = DYNAMIC;
 
+
 -- ----------------------------
--- Records of distribution_level
+-- Table structure for invite_code_fixed
 -- ----------------------------
-INSERT INTO `distribution_level` VALUES (1, '一级代理', 1, 0.00, 1, '最高等级', 0, 0);
-INSERT INTO `distribution_level` VALUES (2, '二级代理', 2, 5.00, 1, '可开三级', 0, 0);
-INSERT INTO `distribution_level` VALUES (3, '三级代理', 3, 3.00, 1, '最低等级', 0, 0);
+DROP TABLE IF EXISTS `invite_code_fixed`;
+CREATE TABLE `invite_code_fixed`  (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `agent_id` int(11) UNSIGNED NOT NULL COMMENT '上级代理ID',
+  `distribution_level_id` int(11) UNSIGNED NOT NULL COMMENT '下级等级ID',
+  `invite_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '固定模式邀请码(手动设置)',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态(1启用 0禁用)',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_invite_code`(`invite_code`) USING BTREE,
+  UNIQUE INDEX `uk_agent_level`(`agent_id`, `distribution_level_id`) USING BTREE,
+  INDEX `idx_agent_id`(`agent_id`) USING BTREE,
+  INDEX `idx_distribution_level_id`(`distribution_level_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '固定分销模式邀请码' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for messages
@@ -1798,7 +1811,7 @@ INSERT INTO `system_config` VALUES (67, 'max_withdraw_fee', '10', 'number', 'oth
 INSERT INTO `system_config` VALUES (68, 'account_security_deposit', '100', 'number', 'other', 'account_security_deposit', '保证金', NULL, 0, 0, 1756998045, 1770564897);
 INSERT INTO `system_config` VALUES (69, 'security_deposit_description', '为保障平台资金安全，账户需保留一定金额作为保证金，用于处理售后等业务', 'textarea', 'other', 'security_deposit_description', '保证金说明', NULL, 0, 0, 1756998526, 1770564897);
 INSERT INTO `system_config` VALUES (70, 'security_key', 'vmFdqzQx', 'text', 'basic', 'security_key', '安全密钥', NULL, 0, 0, 1757056326, 1759390676);
-INSERT INTO `system_config` VALUES (71, 'api_sync_image_mode', 'original', 'select', 'api', 'API同步商品图片处理方式', '选择API同步商品时如何处理图片：本地存储（下载到服务器）、云存储（上传到云端）、原始链接（直接使用API图片链接）', '{\"local\":\"本地存储\",\"cloud\":\"云存储\",\"original\":\"原始链接\"}', 10, 1, 1757402687, 1758261534);
+INSERT INTO `system_config` VALUES (71, 'api_sync_image_mode', 'original', 'select', 'api', 'API同步商品图片处理方式', '选择API同步商品时如何处理图片：本地存储（下载到服务器）、云存储（上传到云端）、原始链接（直接使用API图片链接）', '{\"local\":\"本地存储\",\"cloud\":\"云存储\",\"original\":\"原始链接\"}', 10, 0, 1757402687, 1758261534);
 INSERT INTO `system_config` VALUES (72, 'logistics_enabled', '1', 'text', 'basic', '启用物流查询', '', NULL, 0, 0, 1757429919, 1757430292);
 INSERT INTO `system_config` VALUES (73, 'logistics_provider', 'jumei', 'text', 'basic', '物流服务提供商', '', NULL, 0, 0, 1757429919, 1757430292);
 INSERT INTO `system_config` VALUES (74, 'logistics_appcode', '', 'text', 'basic', '物流查询AppCode', '', NULL, 0, 0, 1757429919, 1757430292);
@@ -1813,6 +1826,8 @@ INSERT INTO `system_config` VALUES (82, 'agent_id_start', '1', 'text', 'other', 
 INSERT INTO `system_config` VALUES (83, 'order_prefix', 'HK', 'text', 'other', '订单号前缀', '', NULL, 0, 0, 1757932983, 1770564897);
 INSERT INTO `system_config` VALUES (84, 'agent_resubmit_order_enabled', '1', 'text', 'basic', '代理重提开关', '', NULL, 0, 0, 1759564234, 1770564897);
 INSERT INTO `system_config` VALUES (85, 'distribution_level_mode', 'legacy', 'radio', 'other', '分销等级模式', 'legacy=代理自定义等级，fixed=总后台固定等级', NULL, 0, 0, 1774296000, 1774296000);
+INSERT INTO `system_config` VALUES (86, 'user_agreement_content', '', 'textarea', 'basic', '用户协议', '登录/注册页面用户协议内容（支持HTML）', NULL, 9, 0, 1774296000, 1774296000);
+INSERT INTO `system_config` VALUES (87, 'privacy_policy_content', '', 'textarea', 'basic', '隐私协议', '登录/注册页面隐私协议内容（支持HTML）', NULL, 10, 0, 1774296000, 1774296000);
 
 -- ----------------------------
 -- Table structure for temp_orders
