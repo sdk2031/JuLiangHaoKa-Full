@@ -811,8 +811,18 @@ CREATE TABLE `config_sms`  (
   `provider` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'wangweiyun' COMMENT '短信服务商',
   `app_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT 'AppCode',
   `template_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '模板ID',
+  `verify_template_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '验证码模板ID',
+  `notice_template_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '通知模板ID',
   `api_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'https://wwsms.market.alicloudapi.com/send_sms' COMMENT 'API地址',
   `sign_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '短信签名',
+  `verify_sign_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '验证码签名',
+  `notice_sign_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '通知签名',
+  `tencent_secret_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '腾讯云SecretId',
+  `tencent_secret_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '腾讯云SecretKey',
+  `tencent_sdk_app_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '腾讯云短信SdkAppId',
+  `tencent_region` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ap-guangzhou' COMMENT '腾讯云地域',
+  `aliyun_access_key_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '阿里云AccessKeyId',
+  `aliyun_access_key_secret` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '阿里云AccessKeySecret',
   `is_default` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否默认配置 0-否 1-是',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态 0-禁用 1-启用',
   `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
@@ -826,7 +836,7 @@ CREATE TABLE `config_sms`  (
 -- ----------------------------
 -- Records of config_sms
 -- ----------------------------
-INSERT INTO `config_sms` VALUES (1, '1', 'wangweiyun', '', '', 'https://wwsms.market.alicloudapi.com/send_sms', '', 1, 1, 1756968815, 1757931087);
+INSERT INTO `config_sms` VALUES (1, '1', 'wangweiyun', '', '', '', '', 'https://wwsms.market.alicloudapi.com/send_sms', '', '', '', '', '', '', 'ap-guangzhou', '', '', 1, 1, 1756968815, 1757931087);
 
 -- ----------------------------
 -- Table structure for content_categories
@@ -941,18 +951,17 @@ CREATE TABLE `employee_groups`  (
 -- ----------------------------
 -- Table structure for image_template
 -- ----------------------------
-DROP TABLE IF EXISTS `image_template`;
-CREATE TABLE `image_template`  (
+CREATE TABLE `image_template` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '模板名称',
   `yidong_image` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '移动底图',
   `liantong_image` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '联通底图',
   `dianxin_image` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '电信底图',
   `guangdian_image` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '广电底图',
-  `yidong_config` json NULL COMMENT '移动文字配置',
-  `liantong_config` json NULL COMMENT '联通文字配置',
-  `dianxin_config` json NULL COMMENT '电信文字配置',
-  `guangdian_config` json NULL COMMENT '广电文字配置',
+  `yidong_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '移动文字配置',
+  `liantong_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '联通文字配置',
+  `dianxin_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '电信文字配置',
+  `guangdian_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '广电文字配置',
   `is_system` tinyint(1) NULL DEFAULT 0 COMMENT '是否系统预设 1是 0否',
   `is_active` tinyint(1) NULL DEFAULT 0 COMMENT '是否当前使用 1是 0否',
   `api_auto_generate` tinyint(1) NULL DEFAULT 0 COMMENT 'API同步后自动转图 1开启 0关闭',
@@ -962,8 +971,7 @@ CREATE TABLE `image_template`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_is_active`(`is_active`) USING BTREE,
   INDEX `idx_status`(`status`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '商品图片模板表' ROW_FORMAT = Dynamic;
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='商品图片模板表';
 -- ----------------------------
 -- Records of image_template
 -- ----------------------------
