@@ -734,7 +734,7 @@ CREATE TABLE `config_api`  (
 -- Records of config_api
 -- ----------------------------
 INSERT INTO `config_api` VALUES (72, 'jlcloud', '巨量互联', '', '', '', '', NULL, 1, 0, 5, '', NULL, 1770980367, 1771045138, 1, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, '2026-02-14 12:59:13', '订单同步完成，查询范围：最近120天，共处理 2 个订单，成功 2 个，失败 0 个', '');
-INSERT INTO `config_api` VALUES (73, 'gth91', '91敢探号', '', '', '', 'https://notify.91haoka.cn', NULL, 1, 0, 0, '', '{\"login_name\":\"星火网络通讯\",\"login_password\":\"qwe123890@\",\"supplier_name\":\"号卡秒反\",\"supplier_shop_id\":\"610319\",\"commission_deduction\":20}', 1771346218, 1772253442, 0, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, NULL, NULL, '');
+INSERT INTO `config_api` VALUES (73, 'gth91', '91敢探号', '', '', '', 'https://notify.91haoka.cn', NULL, 1, 0, 0, '', '{\"login_name\":\"\",\"login_password\":\"\",\"supplier_name\":\"号卡秒反\",\"supplier_shop_id\":\"610319\",\"commission_deduction\":20}', 1771346218, 1772253442, 0, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, NULL, NULL, '');
 
 -- ----------------------------
 -- Table structure for config_h5
@@ -1137,10 +1137,25 @@ CREATE TABLE `order`  (
   `id_card_back` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '身份证背面',
   `id_card_face` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '身份证人脸照',
   `id_card_four` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '第四证照片',
+  `submit_ip` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '下单IP',
+  `submit_ip_location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '下单IP定位',
+  `submit_ip_order_count` int(11) NOT NULL DEFAULT 0 COMMENT '同IP下单次数',
+  `idcard_native_place` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '身份证籍贯',
+  `idcard_gender` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '身份证性别',
+  `idcard_age` int(11) NOT NULL DEFAULT 0 COMMENT '身份证年龄',
+  `product_guishudi` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '产品归属地',
+  `security_check_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending' COMMENT '安全校验状态 pending/safe/risk/disabled',
+  `puk` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT 'PUK',
   `callback_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '订单回调地址',
   `callback_status` enum('none','pending','success','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT 'none' COMMENT '回调状态',
   `callback_retry_count` int(11) NULL DEFAULT 0 COMMENT '回调重试次数',
   `next_callback_time` int(11) NULL DEFAULT NULL COMMENT '下次回调时间',
+  `ship_sms_notified` tinyint(1) NOT NULL DEFAULT 0 COMMENT '发货短信已通知',
+  `ship_sms_notice_time` datetime NULL DEFAULT NULL COMMENT '发货短信通知时间',
+  `pending_photo_sms_notified` tinyint(1) NOT NULL DEFAULT 0 COMMENT '待传照片短信是否已通知',
+  `review_failed_sms_notified` tinyint(1) NOT NULL DEFAULT 0 COMMENT '审核失败短信是否已发送',
+  `review_failed_sms_notice_time` datetime NULL DEFAULT NULL COMMENT '审核失败短信发送时间',
+  `pending_photo_sms_notice_time` datetime NULL DEFAULT NULL COMMENT '待传照片短信通知时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_no`(`order_no`) USING BTREE,
   INDEX `shop_code`(`shop_code`) USING BTREE,
@@ -1544,6 +1559,12 @@ CREATE TABLE `product`  (
   `four_photo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT '' COMMENT '第四照查询链接',
   `card_type` tinyint(1) NOT NULL DEFAULT 0 COMMENT '卡类型：0免费卡 1付费卡',
   `card_price` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '卡费金额（付费卡时有效）',
+  `policy_order_security_check` tinyint(1) NULL DEFAULT NULL COMMENT '订单安全校验覆盖 NULL跟系统',
+  `policy_shop_order_verify` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '店铺下单验证覆盖 NULL跟系统 none/sms/image',
+  `policy_shop_order_idcard_verify` tinyint(1) NULL DEFAULT NULL COMMENT '下单二要素覆盖 NULL跟系统',
+  `policy_product_ship_sms_notice` tinyint(1) NULL DEFAULT NULL COMMENT '发货短信通知覆盖 NULL跟系统',
+  `policy_order_pending_photo_sms_notice` tinyint(1) NULL DEFAULT NULL COMMENT '待传照片短信通知覆盖 NULL跟系统',
+  `policy_order_review_failed_sms_notice` tinyint(1) NULL DEFAULT NULL COMMENT '订单审核失败短信通知覆盖 NULL跟系统',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_api_config_id`(`api_config_id`) USING BTREE,
   INDEX `idx_self_channel_id`(`self_channel_id`) USING BTREE,
@@ -1728,8 +1749,10 @@ CREATE TABLE `sms_logs`  (
   `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '短信内容',
   `code` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '验证码',
   `template_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '模板ID',
+  `template_scene_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '通知模板键名',
   `provider` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT 'wangweiyun' COMMENT '服务提供商',
   `sms_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '短信类型：register注册，withdraw提现，login登录，reset重置密码等',
+  `scene_source` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '通知场景来源',
   `status` tinyint(1) NULL DEFAULT 0 COMMENT '发送状态：0失败，1成功',
   `message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '返回消息',
   `response_data` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '接口返回数据（JSON格式）',
@@ -1753,6 +1776,36 @@ CREATE TABLE `sms_logs`  (
 
 -- ----------------------------
 -- Records of sms_logs
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for system_policy
+-- ----------------------------
+DROP TABLE IF EXISTS `system_policy`;
+CREATE TABLE `system_policy`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_security_check` tinyint(1) NOT NULL DEFAULT 1 COMMENT '订单安全校验',
+  `agent_register_verify` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'none' COMMENT '代理注册验证 none/sms/image',
+  `shop_order_verify` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'none' COMMENT '店铺下单验证 none/sms/image',
+  `shop_order_idcard_verify` tinyint(1) NOT NULL DEFAULT 0 COMMENT '下单二要素',
+  `agent_realname_verify` tinyint(1) NOT NULL DEFAULT 0 COMMENT '代理实名认证能力',
+  `agent_realname_two_factor_verify` tinyint(1) NOT NULL DEFAULT 1 COMMENT '代理实名二要素',
+  `agent_withdraw_realname_required` tinyint(1) NOT NULL DEFAULT 0 COMMENT '提现是否需要实名',
+  `agent_withdraw_verify` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'none' COMMENT '代理提现验证 none/sms/image',
+  `verify_code_auto_fill` tinyint(1) NOT NULL DEFAULT 0 COMMENT '验证码自动回填',
+  `sms_notice_order_ship` tinyint(1) NOT NULL DEFAULT 0 COMMENT '短信通知-订单发货',
+  `sms_notice_order_pending_photo` tinyint(1) NOT NULL DEFAULT 0 COMMENT '短信通知-待传照片',
+  `sms_notice_order_review_failed` tinyint(1) NOT NULL DEFAULT 0 COMMENT '短信通知-订单审核失败',
+  `sms_notice_agent_withdraw` tinyint(1) NOT NULL DEFAULT 0 COMMENT '短信通知-代理提现',
+  `sms_notice_agent_level_change` tinyint(1) NOT NULL DEFAULT 0 COMMENT '短信通知-代理等级调整',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '备注',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '系统默认策略' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of system_policy
 -- ----------------------------
 
 -- ----------------------------
@@ -2127,6 +2180,8 @@ CREATE TABLE `withdraws`  (
   `admin_remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '管理员处理备注',
   `create_time` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '申请时间',
   `process_time` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '处理时间',
+  `agent_sms_notice_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '代理提现短信最近通知状态',
+  `agent_sms_notice_time` int(11) NOT NULL DEFAULT 0 COMMENT '代理提现短信最近通知时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `withdraw_no`(`withdraw_no`) USING BTREE,
   INDEX `agent_id`(`agent_id`) USING BTREE,

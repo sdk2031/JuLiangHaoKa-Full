@@ -4,6 +4,7 @@ namespace app\index\controller;
 use think\facade\Db;
 use think\facade\View;
 use think\facade\Log;
+use think\facade\Cache;
 use app\common\service\ImageService;
 use app\index\service\shop\AreaService;
 use app\index\service\shop\IpLocationService;
@@ -111,11 +112,17 @@ class Shop
     private function resolveConfiguredIndexTemplate(): string
     {
         try {
-            $value = Db::name('config_h5')
-                ->where('config_key', 'shop_index_template')
-                ->where('status', 1)
-                ->order('id', 'desc')
-                ->value('config_value');
+            $version = $this->getTemplateConfigCacheVersion();
+            $cacheKey = 'shop_template:index:' . $version;
+            $value = Cache::get($cacheKey);
+            if (!is_string($value) || $value === '') {
+                $value = Db::name('config_h5')
+                    ->where('config_key', 'shop_index_template')
+                    ->where('status', 1)
+                    ->order('id', 'desc')
+                    ->value('config_value');
+                Cache::set($cacheKey, (string)$value, 60);
+            }
 
             $value = strtolower(trim((string)$value));
             if (in_array($value, ['index1', 'index2', 'index3'], true)) {
@@ -123,11 +130,16 @@ class Shop
             }
 
             // 兼容旧键
-            $legacy = Db::name('config_h5')
-                ->where('config_key', 'product_template')
-                ->where('status', 1)
-                ->order('id', 'desc')
-                ->value('config_value');
+            $legacyKey = 'shop_template:index_legacy:' . $version;
+            $legacy = Cache::get($legacyKey);
+            if (!is_string($legacy) || $legacy === '') {
+                $legacy = Db::name('config_h5')
+                    ->where('config_key', 'product_template')
+                    ->where('status', 1)
+                    ->order('id', 'desc')
+                    ->value('config_value');
+                Cache::set($legacyKey, (string)$legacy, 60);
+            }
             $legacy = strtolower(trim((string)$legacy));
             if ($legacy === 'product-v2') {
                 return 'index2';
@@ -144,11 +156,17 @@ class Shop
     private function resolveConfiguredProductTemplate(): string
     {
         try {
-            $value = Db::name('config_h5')
-                ->where('config_key', 'shop_product_template')
-                ->where('status', 1)
-                ->order('id', 'desc')
-                ->value('config_value');
+            $version = $this->getTemplateConfigCacheVersion();
+            $cacheKey = 'shop_template:product:' . $version;
+            $value = Cache::get($cacheKey);
+            if (!is_string($value) || $value === '') {
+                $value = Db::name('config_h5')
+                    ->where('config_key', 'shop_product_template')
+                    ->where('status', 1)
+                    ->order('id', 'desc')
+                    ->value('config_value');
+                Cache::set($cacheKey, (string)$value, 60);
+            }
 
             $value = strtolower(trim((string)$value));
             if (in_array($value, ['product1', 'product2', 'product3'], true)) {
@@ -156,11 +174,16 @@ class Shop
             }
 
             // 兼容旧键
-            $legacy = Db::name('config_h5')
-                ->where('config_key', 'product_template')
-                ->where('status', 1)
-                ->order('id', 'desc')
-                ->value('config_value');
+            $legacyKey = 'shop_template:product_legacy:' . $version;
+            $legacy = Cache::get($legacyKey);
+            if (!is_string($legacy) || $legacy === '') {
+                $legacy = Db::name('config_h5')
+                    ->where('config_key', 'product_template')
+                    ->where('status', 1)
+                    ->order('id', 'desc')
+                    ->value('config_value');
+                Cache::set($legacyKey, (string)$legacy, 60);
+            }
             $legacy = strtolower(trim((string)$legacy));
             if ($legacy === 'product-v2') {
                 return 'product2';
@@ -172,6 +195,16 @@ class Shop
         }
 
         return 'product1';
+    }
+
+    private function getTemplateConfigCacheVersion(): int
+    {
+        $version = Cache::get('shop_template_config_version');
+        if (empty($version)) {
+            $version = 1;
+            Cache::set('shop_template_config_version', $version, 0);
+        }
+        return intval($version);
     }
     /**
      * 店铺首页展示（面向用户）🆕

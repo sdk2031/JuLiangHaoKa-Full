@@ -89,19 +89,22 @@ class Callback
             $isTestOrder = ($orderData['OrderNo172'] === 'TestOrder172' && $orderData['Remark'] === '推送测试');
             $server = input('param.server', 0);
             
-            if ($isTestOrder) {
-                Log::write('[172号卡回调] 识别为测试订单，跳过签名验证', 'info');
-            }
-
             // 获取配置（用于签名验证和同步结算开关）
             $config = $this->getConfig();
 
-            if (!$server && !$isTestOrder) {
-                // 验证签名（sign解密后得到的是合作方订单号OrderNo，不是172平台订单号OrderNo172）
-                $verified = $this->verifySign($sign, isset($orderData['OrderNo']) ? $orderData['OrderNo'] : '', $config);
+            if (!$server) {
+                // 文档约定：sign解密后应为172平台订单号 OrderNo172
+                $verified = $this->verifySign(
+                    $sign,
+                    isset($orderData['OrderNo172']) ? $orderData['OrderNo172'] : '',
+                    $config,
+                    isset($orderData['OrderNo']) ? $orderData['OrderNo'] : ''
+                );
                 if (!$verified) {
-                    Log::write('[172号卡回调] 签名验证失败', 'error');
-                    return json(['code' => -1, 'message' => '签名验证失败']);
+                    if (!$isTestOrder) {
+                        Log::write('[172号卡回调] 签名验证失败', 'error');
+                        return json(['code' => -1, 'message' => '签名验证失败']);
+                    }
                 }
             }
 
@@ -146,48 +149,86 @@ class Callback
     /**
      * 验证签名
      */
-    protected function verifySign($sign, $orderNo, $config)
+    protected function verifySign($sign, $orderNo172, $config, $orderNo = '')
     {
-        if (empty($sign) || empty($orderNo)) {
-            Log::write('[172号卡回调] 签名验证参数为空 - sign: ' . $sign . ', orderNo: ' . $orderNo, 'error');
+        if (empty($sign) || empty($orderNo172)) {
+            Log::write(
+                '[172号卡回调] 签名验证参数为空 - sign: ' . $sign
+                . ', orderNo172: ' . $orderNo172
+                . ', orderNo: ' . $orderNo,
+                'error'
+            );
             return false;
         }
 
-        if (empty($config) || empty($config['api_secret'])) {
-            Log::write('[172号卡回调] 配置或密钥为空', 'error');
+        if (empty($config)) {
+            Log::write('[172号卡回调] 配置为空', 'error');
             return false;
         }
 
         try {
-            // 从配置中获取密钥
-            $secret = $config['api_secret'];
             $iv = 'MengLong172HaoKa';
+            $secrets = [];
 
-            Log::write('[172号卡回调] 开始验证签名 - 原始sign: ' . $sign . ', 目标orderNo: ' . $orderNo, 'info');
-
-            // 使用AES-256-CBC解密
-            $decrypted = openssl_decrypt($sign, 'AES-256-CBC', $secret, 0, $iv);
-            
-            if ($decrypted !== false) {
-                $decrypted = trim($decrypted);
-                Log::write('[172号卡回调] 解密成功 - 解密结果: ' . $decrypted, 'info');
-                
-                if ($decrypted === $orderNo) {
-                    Log::write('[172号卡回调] 签名验证成功', 'info');
-                    return true;
-                } else {
-                    Log::write('[172号卡回调] 签名验证失败 - 解密结果与订单号不匹配', 'error');
-                    return false;
-                }
-            } else {
-                Log::write('[172号卡回调] 解密失败', 'error');
-                return false;
+            if (!empty($config['api_secret'])) {
+                $secrets[] = trim((string)$config['api_secret']);
             }
+
+            // 文档中明确给出的回调签名秘钥，作为兜底兼容
+            $docSecret = 'fc49efa27e23dbb5675f68fc02bf4007';
+            if (!in_array($docSecret, $secrets, true)) {
+                $secrets[] = $docSecret;
+            }
+
+            foreach ($secrets as $secret) {
+                foreach ($this->buildSignCandidates($sign) as $candidateSign) {
+                    $decrypted = openssl_decrypt($candidateSign, 'AES-256-CBC', $secret, 0, $iv);
+                    if ($decrypted === false) {
+                        continue;
+                    }
+
+                    $decrypted = trim($decrypted);
+
+                    if ($decrypted === (string)$orderNo172) {
+                        return true;
+                    }
+
+                    // 兼容旧实现，避免历史配置仍以合作方订单号校验时直接失败
+                    if (!empty($orderNo) && $decrypted === (string)$orderNo) {
+                        return true;
+                    }
+                }
+            }
+            return false;
 
         } catch (\Exception $e) {
             Log::write('[172号卡回调] 签名验证异常: ' . $e->getMessage(), 'error');
             return false;
         }
+    }
+
+    /**
+     * 构造签名候选值，兼容原始/base64/url编码形式
+     */
+    protected function buildSignCandidates($sign)
+    {
+        $candidates = [];
+        $raw = trim((string)$sign);
+        if ($raw !== '') {
+            $candidates[] = $raw;
+        }
+
+        $decoded = rawurldecode($raw);
+        if ($decoded !== '' && !in_array($decoded, $candidates, true)) {
+            $candidates[] = $decoded;
+        }
+
+        $spaceNormalized = str_replace(' ', '+', $raw);
+        if ($spaceNormalized !== '' && !in_array($spaceNormalized, $candidates, true)) {
+            $candidates[] = $spaceNormalized;
+        }
+
+        return $candidates;
     }
 
     /**
@@ -206,10 +247,11 @@ class Callback
         }
 
         // 更新订单状态
+        $mappedStatus = null;
         if (!empty($orderData['OrderStatus'])) {
-            $orderStatus = $this->mapOrderStatus($orderData['OrderStatus'], $syncSettlementEnabled);
-            if ($orderStatus !== null) {
-                $updateData['order_status'] = $orderStatus;
+            $mappedStatus = $this->mapOrderStatus($orderData['OrderStatus'], $syncSettlementEnabled);
+            if ($mappedStatus !== null) {
+                $updateData['order_status'] = $mappedStatus;
             }
         }
 
@@ -237,7 +279,10 @@ class Callback
 
         // 更新激活状态
         if (!empty($orderData['CardStatus']) && $orderData['CardStatus'] === '已激活') {
-            $updateData['order_status'] = '4';
+            // 结算状态优先，避免“已结算/无法结算”被回写成“已激活”
+            if (!in_array((string)$mappedStatus, ['5', '6'], true)) {
+                $updateData['order_status'] = '4';
+            }
             // 只在jh_time为空时设置，避免重复回调覆盖真实激活时间
             if (empty($localOrder['jh_time'])) {
                 if (!empty($orderData['ActiveTime'])) {

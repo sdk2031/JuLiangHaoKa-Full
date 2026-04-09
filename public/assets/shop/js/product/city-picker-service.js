@@ -1,5 +1,6 @@
 (function (win) {
     var cityData = {};
+    var areaRules = { allowList: [], banList: [], hasFilter: false };
     var selectedProvince = '';
     var selectedCity = '';
     var selectedDistrict = '';
@@ -7,6 +8,106 @@
     var selectedCityCode = '';
     var selectedDistrictCode = '';
     var currentLevel = 0;
+
+    function normalizeRegionName(name) {
+        return String(name || '')
+            .replace(/壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区|省|市|地区|自治州|州|盟|区|县|旗/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+    }
+
+    function cleanAreaToken(token) {
+        return String(token || '')
+            .replace(/^[\s,，；;、|/]+|[\s,，；;、|/]+$/g, '')
+            .replace(/^(可发(地区|区域|范围)?|禁发(地区|区域|范围)?|发货(地区|区域|范围)?|配送(地区|区域|范围)?|地区|区域|省份)\s*[:：]?\s*/g, '')
+            .replace(/^(只发|仅发|仅限|只限|只能发|仅能发|限发)\s*/g, '')
+            .replace(/[（(]/g, '')
+            .replace(/[）)]/g, '')
+            .replace(/等$/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+    }
+
+    function splitAreaText(text) {
+        var raw = String(text || '').trim();
+        if (!raw || raw === '待更新') {
+            return [];
+        }
+        raw = raw.replace(/[\r\n]+/g, ',').replace(/[\s,，；;、|/]+/g, ',');
+        return raw.split(',').map(cleanAreaToken).filter(function (item) {
+            return !!item && item !== '全国' && item !== '全国发货' && item !== '全国可发';
+        });
+    }
+
+    function extractOnlyAllowText(text) {
+        var raw = String(text || '').trim();
+        var match = raw.match(/^(只发|仅发|仅限|只限|只能发|仅能发|限发)\s*(.+)$/);
+        return match ? match[2] : '';
+    }
+
+    function isNationwideText(text) {
+        var cleaned = cleanAreaToken(text);
+        return !cleaned || cleaned === '待更新' || cleaned === '全国' || cleaned === '全国发货' || cleaned === '全国可发';
+    }
+
+    function buildAreaRules() {
+        var needFilter = win.API_TYPE !== 1004 && win.API_TYPE !== 1006;
+        if (!needFilter) {
+            return { allowList: [], banList: [], hasFilter: false };
+        }
+
+        var kefaText = String(win.KEFA || '').trim();
+        var jinfaText = String(win.JINFA || '').trim();
+        var allowText = '';
+        var banText = '';
+        var onlyAllowText = extractOnlyAllowText(jinfaText) || extractOnlyAllowText(kefaText);
+
+        if (onlyAllowText) {
+            allowText = onlyAllowText;
+        } else if (!isNationwideText(kefaText)) {
+            allowText = kefaText;
+        }
+
+        if (!extractOnlyAllowText(jinfaText) && jinfaText && jinfaText !== '待更新') {
+            banText = jinfaText;
+        }
+
+        var allowList = splitAreaText(allowText);
+        var banList = splitAreaText(banText);
+
+        return {
+            allowList: allowList,
+            banList: banList,
+            hasFilter: allowList.length > 0 || banList.length > 0
+        };
+    }
+
+    function matchAreaKeyword(name, keyword) {
+        var left = normalizeRegionName(name);
+        var right = normalizeRegionName(keyword);
+        if (!left || !right) {
+            return false;
+        }
+        return left === right || left.indexOf(right) !== -1 || right.indexOf(left) !== -1;
+    }
+
+    function isAllowedByRules(name) {
+        if (areaRules.allowList.length > 0) {
+            return areaRules.allowList.some(function (item) {
+                return matchAreaKeyword(name, item);
+            });
+        }
+        return true;
+    }
+
+    function isBannedByRules(name) {
+        if (areaRules.banList.length > 0) {
+            return areaRules.banList.some(function (item) {
+                return matchAreaKeyword(name, item);
+            });
+        }
+        return false;
+    }
 
     function updateBreadcrumb() {
         var breadcrumb = document.getElementById('cityBreadcrumb');
@@ -71,44 +172,12 @@
                 }
 
                 cityData = { '86': {} };
-                var needFilter = win.API_TYPE !== 1004 && win.API_TYPE !== 1006;
-                var kefaList = [];
-                var jinfaList = [];
-
-                if (needFilter) {
-                    kefaList = win.KEFA && win.KEFA !== '待更新' && win.KEFA !== '全国'
-                        ? win.KEFA.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; })
-                        : [];
-
-                    var jinfa = win.JINFA || '';
-                    var onlyAllowMatch = jinfa.match(/^(只发|仅发|仅限|只限|只能发|仅能发)(.+)$/);
-                    if (onlyAllowMatch) {
-                        kefaList = onlyAllowMatch[2].trim().split(/[,，、]/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
-                    } else {
-                        jinfaList = jinfa && jinfa !== '待更新'
-                            ? jinfa.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; })
-                            : [];
-                    }
-                }
+                areaRules = buildAreaRules();
 
                 result.data.forEach(function (province) {
                     var provinceName = province.name;
-                    var provinceShort = provinceName.replace(/省|市|自治区|特别行政区|壮族自治区|回族自治区|维吾尔自治区/g, '');
-
-                    if (needFilter && kefaList.length > 0) {
-                        var isAllowed = kefaList.some(function (kefa) {
-                            return provinceName.indexOf(kefa) !== -1 || kefa.indexOf(provinceShort) !== -1 || provinceShort.indexOf(kefa) !== -1;
-                        });
-                        if (!isAllowed) {
-                            return;
-                        }
-                    }
-
-                    if (needFilter && jinfaList.length > 0) {
-                        var isBanned = jinfaList.some(function (jinfaItem) {
-                            return provinceName === jinfaItem || provinceName.indexOf(jinfaItem) !== -1 || jinfaItem.indexOf(provinceShort) !== -1;
-                        });
-                        if (isBanned) {
+                    if (areaRules.hasFilter) {
+                        if (!isAllowedByRules(provinceName) || isBannedByRules(provinceName)) {
                             return;
                         }
                     }
@@ -123,7 +192,7 @@
                     }
                 });
 
-                if (Object.keys(cityData['86']).length === 0 && result.data.length > 0) {
+                if (!areaRules.hasFilter && Object.keys(cityData['86']).length === 0 && result.data.length > 0) {
                     result.data.forEach(function (province) {
                         cityData['86'][province.code] = province.name;
                     });
@@ -144,6 +213,10 @@
         list.innerHTML = '';
 
         var provinces = cityData['86'];
+        if (!provinces || Object.keys(provinces).length === 0) {
+            list.innerHTML = '<li class="city-picker-item">暂无可发省份</li>';
+            return;
+        }
         for (var code in provinces) {
             var li = document.createElement('li');
             li.className = 'city-picker-item';
@@ -189,25 +262,10 @@
                     return;
                 }
 
-                var needFilter = win.API_TYPE !== 1004 && win.API_TYPE !== 1006;
-                var jinfaList = [];
-                if (needFilter) {
-                    var jinfa = win.JINFA || '';
-                    var onlyAllowMatch = jinfa.match(/^(只发|仅发|仅限|只限|只能发|仅能发)(.+)$/);
-                    if (!onlyAllowMatch) {
-                        jinfaList = jinfa ? jinfa.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; }) : [];
-                    }
-                }
-
                 var hasValidCity = false;
                 result.data.forEach(function (city) {
-                    if (needFilter && jinfaList.length > 0) {
-                        var isBanned = jinfaList.some(function (jinfaItem) {
-                            return city.name.indexOf(jinfaItem) !== -1 || jinfaItem.indexOf(city.name) !== -1;
-                        });
-                        if (isBanned) {
-                            return;
-                        }
+                    if (areaRules.hasFilter && isBannedByRules(city.name)) {
+                        return;
                     }
 
                     hasValidCity = true;
@@ -270,25 +328,10 @@
                     return;
                 }
 
-                var needFilter = win.API_TYPE !== 1004 && win.API_TYPE !== 1006;
-                var jinfaList = [];
-                if (needFilter) {
-                    var jinfa = win.JINFA || '';
-                    var onlyAllowMatch = jinfa.match(/^(只发|仅发|仅限|只限|只能发|仅能发)(.+)$/);
-                    if (!onlyAllowMatch) {
-                        jinfaList = jinfa ? jinfa.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; }) : [];
-                    }
-                }
-
                 var filteredDistricts = [];
                 result.data.forEach(function (district) {
-                    if (needFilter && jinfaList.length > 0) {
-                        var isBanned = jinfaList.some(function (jinfaItem) {
-                            return district.name.indexOf(jinfaItem) !== -1 || jinfaItem.indexOf(district.name) !== -1;
-                        });
-                        if (isBanned) {
-                            return;
-                        }
+                    if (areaRules.hasFilter && isBannedByRules(district.name)) {
+                        return;
                     }
                     filteredDistricts.push(district);
                 });
@@ -344,6 +387,9 @@
         document.querySelector('input[name="province_code"]').value = selectedProvinceCode || '';
         document.querySelector('input[name="city_code"]').value = selectedCityCode || '';
         document.querySelector('input[name="district_code"]').value = selectedDistrictCode || '';
+        if (typeof win.clearAddressAreaHint === 'function') {
+            win.clearAddressAreaHint();
+        }
 
         closeCityPicker();
     }

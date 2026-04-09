@@ -17,11 +17,11 @@
         if (!currentJquery) {
             return;
         }
-        currentJquery(document).on('input', 'input[name="order_phone"]', function () {
+        currentJquery(document).on('input change', 'input[name="order_phone"]', function () {
             var orderPhone = currentJquery(this).val();
             var customerPhoneInput = currentJquery('input[name="customer_phone"]');
             if (customerPhoneInput.length > 0) {
-                customerPhoneInput.val(orderPhone);
+                customerPhoneInput.val(orderPhone).trigger('input').trigger('change');
             }
         });
     }
@@ -102,14 +102,35 @@
 
         var countdown = 0;
         var verifyTypeField = document.querySelector('input[name="verify_type"]');
-        var button = document.getElementById('sendOrderCodeBtn');
-
-        if (!verifyTypeField || !button) {
+        if (!verifyTypeField) {
             return;
         }
 
         var verifyType = verifyTypeField.value;
         if (verifyType === 'none') {
+            return;
+        }
+
+        function refreshImageCaptcha() {
+            var captchaImg = document.getElementById('orderImageCaptcha');
+            if (captchaImg) {
+                captchaImg.src = '/captcha?_t=' + Date.now();
+            }
+        }
+
+        if (verifyType === 'image') {
+            refreshImageCaptcha();
+            var refreshBtn = document.getElementById('refreshOrderCaptchaBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function () {
+                    refreshImageCaptcha();
+                });
+            }
+            return;
+        }
+
+        var button = document.getElementById('sendOrderCodeBtn');
+        if (!button) {
             return;
         }
 
@@ -138,42 +159,21 @@
             var url = '';
             var param = {};
 
-            if (verifyType === 'sms' || verifyType === 'both') {
-                target = document.querySelector('input[name="customer_phone"]').value;
+            if (verifyType === 'sms') {
+                var customerPhoneInput = document.querySelector('input[name="customer_phone"]');
+                var orderPhoneInput = document.querySelector('input[name="order_phone"]');
+                target = (customerPhoneInput && customerPhoneInput.value) || (orderPhoneInput && orderPhoneInput.value) || '';
                 targetName = '手机号';
                 if (!target || !/^1[3-9]\d{9}$/.test(target)) {
                     currentLayer.msg('请输入正确的手机号码');
                     return;
                 }
+                if (customerPhoneInput && customerPhoneInput.value !== target) {
+                    customerPhoneInput.value = target;
+                }
                 url = '/index/shop/sendVerifyCode';
                 param.phone = target;
                 param.shop_code = win.SHOP_CODE;
-            } else if (verifyType === 'email') {
-                target = document.querySelector('input[name="customer_email"]').value;
-                targetName = '邮箱';
-                if (!target || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) {
-                    currentLayer.msg('请输入正确的邮箱地址');
-                    return;
-                }
-                url = '/admin/system/sendEmailCode';
-                param.email = target;
-            }
-
-            if (verifyType === 'both') {
-                var phone = document.querySelector('input[name="customer_phone"]').value;
-                var email = document.querySelector('input[name="customer_email"]').value;
-                if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
-                    currentLayer.msg('请输入正确的手机号码');
-                    return;
-                }
-                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    currentLayer.msg('请输入正确的邮箱地址');
-                    return;
-                }
-                url = '/index/shop/sendVerifyCode';
-                param.phone = phone;
-                param.shop_code = win.SHOP_CODE;
-                targetName = '手机号';
             }
 
             var loadIndex = currentLayer.load(2);

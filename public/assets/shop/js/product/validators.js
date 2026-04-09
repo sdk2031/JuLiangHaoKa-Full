@@ -9,6 +9,156 @@
         }
     }
 
+    function getRequiredPhotoFields() {
+        var fields = [];
+        if (win.NEED_ID_PHOTO) {
+            fields.push(
+                { key: 'id_card_front', label: '身份证正面' },
+                { key: 'id_card_back', label: '身份证背面' },
+                { key: 'id_card_face', label: '人像照片' }
+            );
+        }
+        if (win.NEED_FOUR_PHOTO) {
+            fields.push({
+                key: 'id_card_four',
+                label: win.FOUR_PHOTO_TITLE || '第四证照片'
+            });
+        }
+        return fields;
+    }
+
+    function validateRequiredPhotos(layer) {
+        var requiredFields = getRequiredPhotoFields();
+        if (requiredFields.length === 0) {
+            return true;
+        }
+
+        var uploadedImages = win.uploadedImages || {};
+        for (var i = 0; i < requiredFields.length; i += 1) {
+            var item = requiredFields[i];
+            if (!uploadedImages[item.key]) {
+                msg(layer, '请上传' + item.label);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function normalizeIdCard(idcard) {
+        return String(idcard || '').trim().toUpperCase();
+    }
+
+    function getBirthDateFromIdCard(idcard) {
+        var normalized = normalizeIdCard(idcard);
+        if (!/^\d{17}[\dX]$/.test(normalized)) {
+            return null;
+        }
+
+        var birthRaw = normalized.substr(6, 8);
+        var year = parseInt(birthRaw.substr(0, 4), 10);
+        var month = parseInt(birthRaw.substr(4, 2), 10);
+        var day = parseInt(birthRaw.substr(6, 2), 10);
+        var birthDate = new Date(year, month - 1, day);
+
+        if (
+            birthDate.getFullYear() !== year ||
+            birthDate.getMonth() !== month - 1 ||
+            birthDate.getDate() !== day
+        ) {
+            return null;
+        }
+
+        return birthDate;
+    }
+
+    function getAgeFromIdCard(idcard) {
+        var birthDate = getBirthDateFromIdCard(idcard);
+        if (!birthDate) {
+            return 0;
+        }
+
+        var today = new Date();
+        var age = today.getFullYear() - birthDate.getFullYear();
+        var monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        return age > 0 ? age : 0;
+    }
+
+    function parseProductAgeRule(ruleText) {
+        var rule = String(ruleText || '').trim();
+        if (!rule) {
+            return null;
+        }
+
+        var normalized = rule
+            .replace(/\s+/g, '')
+            .replace(/[—–~～]/g, '-')
+            .replace(/周岁/g, '岁');
+
+        var rangeMatch = normalized.match(/(\d{1,2})\s*(?:岁)?-(\d{1,2})\s*(?:岁)?/);
+        if (!rangeMatch) {
+            rangeMatch = normalized.match(/(\d{1,2})\s*(?:岁)?(?:至|到)(\d{1,2})\s*(?:岁)?/);
+        }
+        if (rangeMatch) {
+            return {
+                min: parseInt(rangeMatch[1], 10),
+                max: parseInt(rangeMatch[2], 10)
+            };
+        }
+
+        var minMatch = normalized.match(/(\d{1,2})\s*(?:岁)?(?:以上|及以上|起|起步|或以上)/);
+        if (minMatch) {
+            return {
+                min: parseInt(minMatch[1], 10),
+                max: null
+            };
+        }
+
+        var maxMatch = normalized.match(/(\d{1,2})\s*(?:岁)?(?:以下|及以下|以内|内|封顶|不超过)/);
+        if (maxMatch) {
+            return {
+                min: null,
+                max: parseInt(maxMatch[1], 10)
+            };
+        }
+
+        return null;
+    }
+
+    function validateProductAge(idcard, layer) {
+        var ageRuleText = String(win.PRODUCT_AGE_RULE || '').trim();
+        if (!ageRuleText) {
+            return true;
+        }
+
+        var ageRule = parseProductAgeRule(ageRuleText);
+        if (!ageRule) {
+            return true;
+        }
+
+        var actualAge = getAgeFromIdCard(idcard);
+        if (actualAge <= 0) {
+            msg(layer, '身份证年龄识别失败，请检查身份证号是否正确');
+            return false;
+        }
+
+        if (ageRule.min !== null && actualAge < ageRule.min) {
+            msg(layer, '当前商品要求下单年龄' + ageRuleText + '，您身份证识别年龄为' + actualAge + '岁');
+            return false;
+        }
+
+        if (ageRule.max !== null && actualAge > ageRule.max) {
+            msg(layer, '当前商品要求下单年龄' + ageRuleText + '，您身份证识别年龄为' + actualAge + '岁');
+            return false;
+        }
+
+        return true;
+    }
+
     function validateCommonFields(formData, layer) {
         var name = formData.get('customer_name');
         var phone = formData.get('customer_phone');
@@ -34,31 +184,35 @@
             return false;
         }
 
-        if (verifyType === 'sms' || verifyType === 'both') {
-            if (!phone) {
+        if (verifyType === 'sms') {
+            var contactPhone = phone || orderPhone;
+
+            if (!contactPhone) {
                 msg(layer, '请输入联系电话');
                 return false;
             }
-            if (!phoneRegex.test(phone)) {
+            if (!phoneRegex.test(contactPhone)) {
                 msg(layer, '请输入正确的联系电话格式');
                 return false;
             }
-        }
 
-        if (verifyType === 'email' || verifyType === 'both') {
-            var email = formData.get('customer_email');
-            if (!email) {
-                msg(layer, '请输入邮箱地址');
-                return false;
-            }
-            if (!emailRegex.test(email)) {
-                msg(layer, '请输入正确的邮箱格式');
-                return false;
+            var customerPhoneInput = document.querySelector('input[name="customer_phone"]');
+            if (customerPhoneInput && customerPhoneInput.value !== contactPhone) {
+                customerPhoneInput.value = contactPhone;
             }
         }
 
         if (!idcard) {
             msg(layer, '请输入身份证号');
+            return false;
+        }
+
+        if (!/^\d{17}[\dXx]$/.test(idcard)) {
+            msg(layer, '身份证号格式不正确');
+            return false;
+        }
+
+        if (!validateProductAge(idcard, layer)) {
             return false;
         }
 
@@ -82,7 +236,7 @@
             }
         }
 
-        return true;
+        return validateRequiredPhotos(layer);
     }
 
     function validateTianchengFields(layer) {

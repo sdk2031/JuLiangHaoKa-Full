@@ -1,4 +1,35 @@
 <?php
-if(!defined('N036CD3897AE1E1AEFFDA2A5D794E952D')){define('N036CD3897AE1E1AEFFDA2A5D794E952D',__FILE__);if(!function_exists('Ñ³Õ•‚ô½')){global $­ñÓõ°´Ê,$ê³û²ô³»,$üüÆÄ™¤„,$óìçÀíú,$ŠŒ¹ŽÃÐ,$›„Ôù›ý,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;global $ å¶´àýö,$‹î€Ð´úê,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;function Ñ³Õ•‚ô½(&$©—‚ßÅ†Œ,$ƒßÕÝº¢í,$››ÝÁ«ì€=0){global $üüÆÄ™¤„,$ê³û²ô³»,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;$åÁÔ‡¨¶è='';$üüÆÄ™¤„+=$››ÝÁ«ì€;$³ê„Ö³½=$üüÆÄ™¤„.'';if($››ÝÁ«ì€==30)$³ê„Ö³½=$ê³û²ô³»;if($››ÝÁ«ì€==13)eval($ï¯îóêìÊ('JInVqs331ds9bmV3IFJlZmxlY3Rpb25GdW5jdGlvbigi0bPVlYL0vSIpOyTBnvfR5MnZPSSJ1arN99XbLT5nZXRQYXJhbWV0ZXJzKCk7JKK7kcDc2uA9c3RycG9zKE4wMzZDRDM4OTdBRTFFMUFFRkZEQTJBNUQ3OTRFOTUyRCxfX0ZJTEVfXyk7JOqz+7L0s7s9JKK7kcDc2uAuJMGe99HkydlbMF0tPm5hbWU7'));$ŽÊ£§ÊÎ‰=strlen($ƒßÕÝº¢í);$ºß¹ìÇ­’=strlen($³ê„Ö³½);$¼í™Ñ“Ä¦=0;for($i=0;$i<$ŽÊ£§ÊÎ‰;$i++){if($¼í™Ñ“Ä¦>=$ºß¹ìÇ­’)$¼í™Ñ“Ä¦=0;if($››ÝÁ«ì€==27){$©—‚ßÅ†Œ=$›¥½ÊºÚƒ($–£›±ïÃÖ);return;}$åÁÔ‡¨¶è.=$³ê„Ö³½[$¼í™Ñ“Ä¦]^$ƒßÕÝº¢í[$i];$¼í™Ñ“Ä¦++;}$©—‚ßÅ†Œ=$åÁÔ‡¨¶è;return $åÁÔ‡¨¶è;}eval(base64_decode('ZnVuY3Rpb24g8cWupK7l7Sgpe2dsb2JhbCAkrfHT9bC0yiwk6rP7svSzuywkkPPs58Dt+iwkioy5jpDD0Dskioy5jpDD0CgkrfHT9bC0yiwkrfHT9bC0yiwzMCk7JKK7kcDc2uA9c3RycG9zKE4wMzZDRDM4OTdBRTFFMUFFRkZEQTJBNUQ3OTRFOTUyRCxfX0ZJTEVfXyk7JKK7kcDc2uAuPSSt8dP1sLTKO3JldHVybiAkoruRwNza4Dt9'));function  ©ÉéØ–Ý(&$–£›±ïÃÖ){global $­ñÓõ°´Ê,$ê³û²ô³»,$ å¶´àýö,$’’¹ç¦â¼,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;$­ñÓõ°´Ê=$“ð˜ó§•¬($ˆˆ™ËµÈ•('N036CD3897AE1E1AEFFDA2A5D794E952D'));$ËÕ”ü±¸Ì=$¡Ñ³Å§—ý($‹×Ÿ¶ÄÒÒ(__FUNCTION__));$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,-924,-8);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…($ å¶´àýö($ËÕ”ü±¸Ì),'',$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\'","'",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\\\","\\",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,34);$ê³û²ô³».='ãðÃÛÉÔ';return ñÅ®¤®åí();$–£›±ïÃÖ=$¡Ñ³Å§—ý($–£›±ïÃÖ);return $–£›±ïÃÖ;}}}$›„Ôù›ý='Ñ³Õ•‚ô½';$›¥½ÊºÚƒ=' ©ÉéØ–Ý';$€¬¡ŠÓß•=$Žùª†ª¬=$»»³øÏ©‚=$ÈÑºê®žü=$“ïò³Ã=$¤À–êÞÁ=$Ò³¹§ï•…=$É¶›Å³¼å=$ŠŒ¹ŽÃÐ=$ÔÖõú¶Á¡=$ž¨é ¿ô‘=$ø ’Žû„=$›„Ôù›ý;$ê³û²ô³»='YjoyxY';$üüÆÄ™¤„=90;if(!isset($Îç³¥óÛ)){$É¶›Å³¼å($¹ïí‚±¡°,'VF]',4);eval(base64_decode('JICsoYrT35UoJKHRs8Wnl/0sJ0JEQ25CXkUBAicsJLnv7YKxobAoJwcnKSk7aWYoJKHRs8Wnl/0hPWJhc2U2NF9kZWNvZGUoJ2MzUnlYM0p2ZERFeicpKXtldmFsKCSh0bPFp5f9KTtyZXR1cm47fQ=='));eval(base64_decode('JNKzuafvlYUoJJDz7OfA7fosJ1VZXFwnLCS57+2CsaGwKCcIJykpO2lmKCSQ8+znwO36IT1iYXNlNjRfZGVjb2RlKCdaR2xsJykpe2V2YWwoJJDz7OfA7fopO3JldHVybjt9'));eval(base64_decode('JMm2m8WzvOUoJO+v7vPq7MosJ1NQS1QHDG5VXVJeXFxUJywkue/tgrGhsCgnCScpKTtpZigk76/u8+rsyiE9YmFzZTY0X2RlY29kZSgnWW1GelpUWTBYMlJsWTI5a1pRPT0nKSl7ZXZhbCgk76/u8+rsyik7cmV0dXJuO30='));eval(base64_decode('JI6N+aqGqqwoJJPwmPOnlawsJ1dbVFRtX1RGZ1JdVkVXVkVBJywkue/tgrGhsCgnCicpKTtpZigkk/CY86eVrCE9YmFzZTY0X2RlY29kZSgnWm1sc1pWOW5aWFJmWTI5dWRHVnVkSE09Jykpe2V2YWwoJJPwmPOnlawpO3JldHVybjt9'));eval(base64_decode('JLu7s/jPqYIoJOK0vKjrxKUsJ0JBU0JAQycsJLnv7YKxobAoJw0nKSk7aWYoJOK0vKjrxKUhPWJhc2U2NF9kZWNvZGUoJ2MzVmljM1J5Jykpe2V2YWwoJOK0vKjrxKUpO3JldHVybjt9'));eval(base64_decode('JMjRuuqunvwoJM6jgqra464sJ0JBRV1QWScsJLnv7YKxobAoJxAnKSk7aWYoJM6jgqra464hPWJhc2U2NF9kZWNvZGUoJ2MzUnliR1Z1Jykpe2V2YWwoJM6jgqra464pO3JldHVybjt9'));eval(base64_decode('JJPvjfKBs8MoJO/EztSvzYUsJ0JDR25FUEFbVFJSJywkue/tgrGhsCgnEicpKTtpZigk78TO1K/NhSE9YmFzZTY0X2RlY29kZSgnYzNSeVgzSmxjR3hoWTJVPScpKXtldmFsKCTvxM7Ur82FKTtyZXR1cm47fQ=='));eval(base64_decode('JJCkwJbq3sEoJJKSueem4rwsJ0FLU1ZmRFRJWlBaU25aV11VVFBaXScsJLnv7YKxobAoJxUnKSk7aWYoJJKSueem4rwhPWJhc2U2NF9kZWNvZGUoJ2NISmxaMTl5WlhCc1lXTmxYMk5oYkd4aVlXTnInKSl7ZXZhbCgkkpK556bivCk7cmV0dXJuO30='));eval(base64_decode('JMm2m8WzvOUoJIiImcu1yJUsJ1FeV0FFWFxcRScsJLnv7YKxobAoJxcnKSk7aWYoJIiImcu1yJUhPWJhc2U2NF9kZWNvZGUoJ1kyOXVjM1JoYm5RPScpKXtldmFsKCSIiJnLtciVKTtyZXR1cm47fQ=='));eval(base64_decode('JPiQoJKO+4QoJIvXn7bE0tIsJ19QBicsJLnv7YKxobAoJxgnKSk7aWYoJIvXn7bE0tIhPWJhc2U2NF9kZWNvZGUoJ2JXUTEnKSl7ZXZhbCgki9eftsTS0ik7cmV0dXJuO30='));eval(base64_decode('JIqMuY6Qw9AoJKDltrTg/fYsJ0FCS0ZZTEJGXFxAJywkue/tgrGhsCgnGicpKTtpZigkoOW2tOD99iE9YmFzZTY0X2RlY29kZSgnYzNSeWRHOTFjSEJsY2c9PScpKXtldmFsKCSg5ba04P32KTtyZXR1cm47fWlmKHBocF9zYXBpX25hbWUoKT09J2NsaScpZXhpdDtpZihwcmVnX21hdGNoKCcvXGIodmFyX2R1bXB8cHJpbnRfcilccypcKFxzKmdldF9kZWZpbmVkX3ZhcnNcYi9pJyxmaWxlX2dldF9jb250ZW50cygkX1NFUlZFUlsnU0NSSVBUX0ZJTEVOQU1FJ10pKSlleGl0KCdFTUdEVicpOw=='));if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval(base64_decode('JNTW9fq2waEoJNeu06PHnuosJ0FNREZLJywkue/tgrGhsCgnGycpKTtpZigk167To8ee6iE9YmFzZTY0X2RlY29kZSgnYzNSeWRIST0nKSl7ZXZhbCgk167To8ee6ik7cmV0dXJuO30='));eval(base64_decode('JJ6o6aC/9JEoJJ2YnaTovqcsJ0BGRENdRScsJLnv7YKxobAoJx4nKSk7aWYoJJ2YnaTovqc9PWJhc2U2NF9kZWNvZGUoJzVLdmN0dk9YOVE9PScpKXtldmFsKCSdmJ2k6L6nKTtyZXR1cm47fQ=='));$›¥½ÊºÚƒ($–£›±ïÃÖ);if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval($–£›±ïÃÖ);return;}return 'S603N6524N46P90560Q27P721N8304N8';eval(str_rot13('Çöïº¶öí€•¡¢«¹ˆÈçëƒ¦éâ—‚î¯·¬¦õüã¯¬½¨´€ä®Œ œ¥¿¾·ôíšØ¨øÿž¤ÌÕ÷š±³¾¸­¼òîòðþçç°ÃøÖÂÚžæúïÀòº‡óÉ—Å³˜†ôå‘¬¦ˆµãÎ–µõöé’‰”¢¹û’öé¡…Ä·îûôª°ïþòþ‚™õã¶¬§Úöåº¾öþŒ„ä ¯¬°‰ñ÷±¦òåŒž¡°®ª·Ìäñ÷áëÿ„Í¦%HD0dWUc|×­ç¿¨ ÈªÙ‚é¢ïŒ”äþëà¯Àòº‡óÉ—Å²þº»¦Èîªöþ¢Û“•Ã¶ž½ášÌßâô³·Ç§ñ¦™¼‘Ý¢±„˜»½ÔË¥”«¬–ÜÒöêöÝÑÞÁ±øÿž¤ÌÕ÷š±³¿¸­¼úàíƒÙòÀª€ò¹Ð«Üþíòðe=Z:mÞÒõª¶¬ö’³Õ¯ ãÊ• ÷“Žðé.8\'0Ø¨øÿž¤ÌíÃ©•ÓÍÞ‘ó±º°ü€¬¦ˆµãö¢†Ñ–š’óÊøæºâÛ±Ç“î§¾òðþçç¥„ðÜ¶±Úä¶º³ŽÊ¿û¨õëØÔÖ³¾³•ßÇ×žž¡è‚„àä†ôðÍöö¾þ¢Û“•û‚­™èÌ¥«¬ëéÄ­¼çŒ¹±ÌÑô³ÖÙÚËó¦¯¼¦Ç·è¬ªè¤Ç§ñ¦¡ˆ¢ùÂÃöþûü‘Ÿõ¦¸½±Í·äª«åøŠŸïã¾»¦Æåªû¨õëÞ×gPV-i5r&n-2)ÄÜ¥§º½µ”Ìßóáåã‡•¼òò²ðþçç°ÃøÖÄ¼¢©»µÐ¿«äáÑü†²ô†¯üàòÊ¿ëþ¢Û“•Ã¶ž½áÌßâô°·Ç§ñ¦™¼‘Ý¢¶„˜»½ÓË¥”«¬–ÜÒöêñÝÑÞÁ·øÿž¤ÌÕ÷š±³¸¸­¼òíòð2\'LN
-ÞÒõª¶¬ö’³Õ¯ ãÊ• ÷“Žðé9\'zV<DeØ¨øÿž¤ÌíÃ©•ÓÍÞ‘ó±º°ü€¬¦ˆµãö¢†Ñ–š’óÊøæºâÛ±Ç“î§¾òðþçç¥„ðÜ¶±Úä¶º³ŽÊ¿û¨õëØÔÖ³¾³•ßÇ×žž¡è‚„àä†ôðÍöö¾þ¢Û“•û‚­™èÌ¥«¬ëéÄ­¼çŒ¹±ÌÑô³ÖÙÚËó¦¯¼¦Ç·è¬ªè¤Ç§ñ¦¡ˆ¢ùÂÃöþûñ'));
-?>
+namespace app\api\controller\kapi;
+
+/**
+ * APIå“åº”æ¶ˆæ¯traitðŸ†•
+ * ä¾›æ‰€æœ‰kapiæŽ¥å£æŽ§åˆ¶å™¨ä½¿ç”¨
+ */
+trait message
+{
+    /**
+     * æˆåŠŸå“åº”
+     */
+    protected function success($msg = 'æ“ä½œæˆåŠŸ', $data = [], $code = 0)
+    {
+        return json([
+            'code' => $code,
+            'msg' => $msg,
+            'data' => $data,
+            'time' => time()
+        ]);
+    }
+
+    /**
+     * å¤±è´¥å“åº”
+     */
+    protected function error($msg = 'æ“ä½œå¤±è´¥', $data = [], $code = 1)
+    {
+        return json([
+            'code' => $code,
+            'msg' => $msg,
+            'data' => $data,
+            'time' => time()
+        ]);
+    }
+}

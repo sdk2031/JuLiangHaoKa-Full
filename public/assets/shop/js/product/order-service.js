@@ -38,7 +38,10 @@
 
         [
             'customer_name',
+            'customer_phone',
             'order_phone',
+            'verify_code',
+            'verify_type',
             'customer_idcard',
             'customer_address',
             'customer_city',

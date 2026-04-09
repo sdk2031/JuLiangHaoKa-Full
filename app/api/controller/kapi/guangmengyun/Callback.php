@@ -132,8 +132,10 @@ class Callback
             }
 
             // 构建更新数据
+            $apiStatus = isset($callbackData['status']) ? intval($callbackData['status']) : 0;
+
             $updateData = [
-                'order_status' => $this->convertOrderStatus(isset($callbackData['status']) ? $callbackData['status'] : 0),
+                'order_status' => $this->convertOrderStatus($apiStatus),
                 'production_number' => isset($callbackData['selectPhone']) ? $callbackData['selectPhone'] : $localOrder['production_number'],
                 'express_company' => isset($callbackData['expressName']) ? $callbackData['expressName'] : '',
                 'tracking_number' => isset($callbackData['expressNo']) ? $callbackData['expressNo'] : '',
@@ -198,13 +200,15 @@ class Callback
 
             // 处理激活状态 - 结算状态优先级更高
             $isSettlementStatus = in_array($finalStatus, ['5', '6']);
-            if ($callbackData['status'] == 5 && !$isSettlementStatus) {
+            if ($apiStatus == 5 && !$isSettlementStatus) {
                 $finalStatus = '4'; // 已激活
                 // 只在jh_time为空时设置，避免重复回调覆盖真实激活时间
                 if (empty($localOrder['jh_time'])) {
                     $updateData['jh_time'] = date('Y-m-d H:i:s');
                 }
             }
+
+            $finalStatus = $this->protectOrderStatus(isset($localOrder['order_status']) ? $localOrder['order_status'] : '', $finalStatus);
 
             $updateData['order_status'] = $finalStatus;
 
@@ -528,6 +532,27 @@ class Callback
         ];
         
         return isset($statusMap[$apiStatus]) ? $statusMap[$apiStatus] : '0';
+    }
+
+    /**
+     * 保护订单状态，避免结算态被普通激活回调覆盖
+     */
+    private function protectOrderStatus($currentStatus, $newStatus)
+    {
+        $currentStatus = (string)$currentStatus;
+        $newStatus = (string)$newStatus;
+
+        // 已结算后不允许回退到已激活/已发货/已提交等任意非已结算状态
+        if ($currentStatus === '5' && $newStatus !== '5') {
+            return '5';
+        }
+
+        // 结算失败允许前进到已结算，但不允许被普通激活回调回退
+        if ($currentStatus === '6' && !in_array($newStatus, ['5', '6'], true)) {
+            return '6';
+        }
+
+        return $newStatus;
     }
 
     /**
