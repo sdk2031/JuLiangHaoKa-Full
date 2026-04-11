@@ -2,10 +2,13 @@
 namespace app\agent\controller;
 
 use app\common\service\AgentDomainBrandService;
+use app\common\traits\SafeCacheTrait;
 use think\facade\Session;
 
 class Base
 {
+    use SafeCacheTrait;
+
     /**
      * 构造函数📝
      */

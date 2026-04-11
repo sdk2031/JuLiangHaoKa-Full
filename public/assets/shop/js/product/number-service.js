@@ -56,21 +56,18 @@
         var province = provinceInput ? provinceInput.value : '';
         var city = cityInput ? cityInput.value : '';
 
-        if (!province || !city) {
-            document.getElementById('numberLoading').style.display = 'none';
-            document.getElementById('numberEmpty').style.display = 'block';
-            document.querySelector('#numberEmpty .empty-text').textContent = '请先选择收货城市';
-            document.querySelector('#numberEmpty .empty-desc').textContent = '选号功能需要根据收货地址提供对应地区的号码';
-            return;
-        }
-
         var requestData = {
             product_id: win.PRODUCT_ID,
             shop_code: win.SHOP_CODE,
-            province: province,
-            city: city,
             page: currentPage
         };
+
+        if (province) {
+            requestData.province = province;
+        }
+        if (city) {
+            requestData.city = city;
+        }
 
         var districtCodeInput = document.querySelector('input[name="district_code"]');
         var provinceCodeInput = document.querySelector('input[name="province_code"]');

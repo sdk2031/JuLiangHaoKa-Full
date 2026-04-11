@@ -211,6 +211,24 @@
         });
     }
 
+    function isLikelyImageUrl(url) {
+        var normalizedUrl = String(url || '').trim();
+        if (!normalizedUrl) {
+            return false;
+        }
+
+        if (/^data:image\//i.test(normalizedUrl)) {
+            return true;
+        }
+
+        var cleanUrl = normalizedUrl.split('#')[0].split('?')[0];
+        if (/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(cleanUrl)) {
+            return true;
+        }
+
+        return /\/uploads\/products\/four_photo\//i.test(cleanUrl);
+    }
+
     function handleFourPhotoQuery(url) {
         if (!currentLayer) {
             return;
@@ -220,7 +238,7 @@
             return;
         }
 
-        var isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(url);
+        var isImage = isLikelyImageUrl(url);
         if (isImage) {
             currentLayer.open({
                 type: 1,
@@ -538,12 +556,15 @@
             });
         });
 
-        var fourPhotoBtn = document.querySelector('.four-photo-btn[data-four-photo]');
-        if (fourPhotoBtn) {
-            fourPhotoBtn.addEventListener('click', function () {
-                handleFourPhotoQuery(this.getAttribute('data-four-photo'));
+        var fourPhotoBtns = document.querySelectorAll('[data-four-photo]');
+        fourPhotoBtns.forEach(function (button) {
+            button.addEventListener('click', function (event) {
+                if (event && typeof event.preventDefault === 'function') {
+                    event.preventDefault();
+                }
+                handleFourPhotoQuery(this.getAttribute('data-four-photo') || this.getAttribute('href'));
             });
-        }
+        });
     }
 
     function bindStaticEvents() {

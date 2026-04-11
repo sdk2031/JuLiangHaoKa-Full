@@ -501,6 +501,9 @@ CREATE TABLE `agents`  (
   `api_enabled` tinyint(1) NULL DEFAULT 0 COMMENT 'API功能是否启用(0:禁用 1:启用)',
   `salt` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '密码盐',
   `status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '状态0封禁  1正常',
+  `freeze_reason` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '冻结原因',
+  `fadada_sign_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'none' COMMENT '法大大签约状态 none/pending_payment/pending_review/approved/rejected',
+  `fadada_sign_record_id` int(11) NOT NULL DEFAULT 0 COMMENT '最近法大大签约记录ID',
   `invite_code_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '邀请码ID',
   `distribution_level_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '固定分销等级ID（fixed模式使用）',
   `agent_custom_domain` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'agent_代理自定义域名(仅host)',
@@ -541,6 +544,44 @@ CREATE TABLE `agents`  (
 
 -- ----------------------------
 -- Records of agents
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for fadada_sign_records
+-- ----------------------------
+DROP TABLE IF EXISTS `fadada_sign_records`;
+CREATE TABLE `fadada_sign_records`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `agent_id` int(11) NOT NULL DEFAULT 0 COMMENT '代理ID',
+  `agent_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '姓名',
+  `id_card` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '证件号',
+  `mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '手机号',
+  `amount` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '支付金额',
+  `order_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '支付订单号',
+  `payment_record_id` int(11) NOT NULL DEFAULT 0 COMMENT '支付记录ID',
+  `pay_channel` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '支付渠道',
+  `pay_mode` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '支付模式',
+  `pay_status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '支付状态 0待支付 1已支付',
+  `sign_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending_payment' COMMENT '签约状态 pending_payment/pending_review/approved/rejected',
+  `prompt_position` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'register' COMMENT '提示位置 register/withdraw',
+  `description_snapshot` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '签约说明快照',
+  `qrcode_snapshot` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '二维码内容快照',
+  `access_token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约访问凭证',
+  `access_token_expire_time` int(11) NOT NULL DEFAULT 0 COMMENT '签约凭证过期时间',
+  `review_admin_id` int(11) NOT NULL DEFAULT 0 COMMENT '审核管理员ID',
+  `review_time` int(11) NOT NULL DEFAULT 0 COMMENT '审核时间',
+  `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
+  `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_order_no`(`order_no`) USING BTREE,
+  INDEX `idx_agent_id`(`agent_id`) USING BTREE,
+  INDEX `idx_pay_status`(`pay_status`) USING BTREE,
+  INDEX `idx_sign_status`(`sign_status`) USING BTREE,
+  INDEX `idx_access_token`(`access_token`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '法大大签约记录表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of fadada_sign_records
 -- ----------------------------
 
 -- ----------------------------
@@ -951,6 +992,7 @@ CREATE TABLE `employee_groups`  (
 -- ----------------------------
 -- Table structure for image_template
 -- ----------------------------
+DROP TABLE IF EXISTS `image_template`;
 CREATE TABLE `image_template` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '模板名称',
