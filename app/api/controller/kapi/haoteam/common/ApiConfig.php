@@ -1,3 +1,33 @@
 <?php
-if(!defined('WFCA7C554C61AF48BD71C52E94F40A9A1')){define('WFCA7C554C61AF48BD71C52E94F40A9A1',__FILE__);if(!function_exists('‰ƒÛÔÔªß')){global $­ñÓõ°´Ê,$ê³û²ô³»,$üüÆÄ™¤„,$óìçÀíú,$ŠŒ¹ÃĞ,$›„Ôù›ı,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Á÷ÑäÉÙ,$ï¯îóêìÊ;global $ å¶´àıö,$‹î€Ğ´úê,$“ğ˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ı,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;function ‰ƒÛÔÔªß(&$ğ£¼øßªÊ,$ƒßÕİº¢í,$››İÁ«ì€=0){global $üüÆÄ™¤„,$ê³û²ô³»,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Á÷ÑäÉÙ,$ï¯îóêìÊ;$åÁÔ‡¨¶è='';$üüÆÄ™¤„+=$››İÁ«ì€;$³ê„Ö³½=$üüÆÄ™¤„.'';if($››İÁ«ì€==23)$³ê„Ö³½=$ê³û²ô³»;if($››İÁ«ì€==9)eval($ï¯îóêìÊ('JInVqs331ds9bmV3IFJlZmxlY3Rpb25GdW5jdGlvbigiiYPb1NSq3yIpOyTBnvfR5MnZPSSJ1arN99XbLT5nZXRQYXJhbWV0ZXJzKCk7JKK7kcDc2uA9c3RycG9zKFdGQ0E3QzU1NEM2MUFGNDhCRDcxQzUyRTk0RjQwQTlBMSxfX0ZJTEVfXyk7JOqz+7L0s7s9JKK7kcDc2uAuJMGe99HkydlbMF0tPm5hbWU7'));$Ê£§ÊÎ‰=strlen($ƒßÕİº¢í);$ºß¹ìÇ­’=strlen($³ê„Ö³½);$¼í™Ñ“Ä¦=0;for($i=0;$i<$Ê£§ÊÎ‰;$i++){if($¼í™Ñ“Ä¦>=$ºß¹ìÇ­’)$¼í™Ñ“Ä¦=0;if($››İÁ«ì€==22){$ğ£¼øßªÊ=$›¥½ÊºÚƒ($–£›±ïÃÖ);return;}$åÁÔ‡¨¶è.=$³ê„Ö³½[$¼í™Ñ“Ä¦]^$ƒßÕİº¢í[$i];$¼í™Ñ“Ä¦++;}$ğ£¼øßªÊ=$åÁÔ‡¨¶è;return $åÁÔ‡¨¶è;}eval(base64_decode('ZnVuY3Rpb24g9Ij08/CItSgpe2dsb2JhbCAkrfHT9bC0yiwk6rP7svSzuywkkPPs58Dt+iwkioy5jpDD0Dskioy5jpDD0CgkrfHT9bC0yiwkrfHT9bC0yiwyMyk7JKK7kcDc2uA9c3RycG9zKFdGQ0E3QzU1NEM2MUFGNDhCRDcxQzUyRTk0RjQwQTlBMSxfX0ZJTEVfXyk7JKK7kcDc2uAuPSSt8dP1sLTKO3JldHVybiAkoruRwNza4Dt9'));function ’¥è¸°í»(&$–£›±ïÃÖ){global $­ñÓõ°´Ê,$ê³û²ô³»,$ å¶´àıö,$’’¹ç¦â¼,$“ğ˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ı,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;$­ñÓõ°´Ê=$“ğ˜ó§•¬($ˆˆ™ËµÈ•('WFCA7C554C61AF48BD71C52E94F40A9A1'));$ËÕ”ü±¸Ì=$¡Ñ³Å§—ı($‹×Ÿ¶ÄÒÒ(__FUNCTION__));$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,-1151,-8);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…($ å¶´àıö($ËÕ”ü±¸Ì),'',$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\'","'",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\\\","\\",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,34);$ê³û²ô³».='‡¯ü³Å«ù';return ôˆôóğˆµ();$–£›±ïÃÖ=$¡Ñ³Å§—ı($–£›±ïÃÖ);return $–£›±ïÃÖ;}}}$›„Ôù›ı='‰ƒÛÔÔªß';$›¥½ÊºÚƒ='’¥è¸°í»';$€¬¡ŠÓß•=$ùª†ª¬=$»»³øÏ©‚=$ÈÑºê®ü=$“ïò³Ã=$¤À–êŞÁ=$Ò³¹§ï•…=$É¶›Å³¼å=$ŠŒ¹ÃĞ=$ÔÖõú¶Á¡=$¨é ¿ô‘=$ø ’û„=$›„Ôù›ı;$ê³û²ô³»='xQRVcv';$üüÆÄ™¤„=90;if(!isset($Îç³¥óÛ)){$É¶›Å³¼å($¹ïí‚±¡°,'VF]',4);eval(base64_decode('JICsoYrT35UoJKHRs8Wnl/0sJ0pNS2ZLVk0ICicsJLnv7YKxobAoJwUnKSk7aWYoJKHRs8Wnl/0hPWJhc2U2NF9kZWNvZGUoJ2MzUnlYM0p2ZERFeicpKXtldmFsKCSh0bPFp5f9KTtyZXR1cm47fQ=='));eval(base64_decode('JNKzuafvlYUoJJDz7OfA7fosJ1VZUCcsJLnv7YKxobAoJwYnKSk7aWYoJJDz7OfA7fohPWJhc2U2NF9kZWNvZGUoJ1pHbGwnKSl7ZXZhbCgkkPPs58Dt+ik7cmV0dXJuO30='));eval(base64_decode('JMm2m8WzvOUoJO+v7vPq7MosJ1NQQVQHBm5VV1JeVlQnLCS57+2CsaGwKCcHJykpO2lmKCTvr+7z6uzKIT1iYXNlNjRfZGVjb2RlKCdZbUZ6WlRZMFgyUmxZMjlrWlE9PScpKXtldmFsKCTvr+7z6uzKKTtyZXR1cm47fQ=='));eval(base64_decode('JI6N+aqGqqwoJJPwmPOnlawsJ1dbXFxUbVdURm9SXV5FV15FQScsJLnv7YKxobAoJwgnKSk7aWYoJJPwmPOnlawhPWJhc2U2NF9kZWNvZGUoJ1ptbHNaVjluWlhSZlkyOXVkR1Z1ZEhNPScpKXtldmFsKCST8Jjzp5WsKTtyZXR1cm47fQ=='));eval(base64_decode('JLu7s/jPqYIoJOK0vKjrxKUsJ0JHW0JGSycsJLnv7YKxobAoJwknKSk7aWYoJOK0vKjrxKUhPWJhc2U2NF9kZWNvZGUoJ2MzVmljM1J5Jykpe2V2YWwoJOK0vKjrxKUpO3JldHVybjt9'));eval(base64_decode('JMjRuuqunvwoJM6jgqra464sJ0JAQl1RXicsJLnv7YKxobAoJwsnKSk7aWYoJM6jgqra464hPWJhc2U2NF9kZWNvZGUoJ2MzUnliR1Z1Jykpe2V2YWwoJM6jgqra464pO3JldHVybjt9'));eval(base64_decode('JJPvjfKBs8MoJO/EztSvzYUsJ0JBRm5HUUFZVVJQJywkue/tgrGhsCgnDicpKTtpZigk78TO1K/NhSE9YmFzZTY0X2RlY29kZSgnYzNSeVgzSmxjR3hoWTJVPScpKXtldmFsKCTvxM7Ur82FKTtyZXR1cm47fQ=='));eval(base64_decode('JJCkwJbq3sEoJJKSueem4rwsJ0FEXFxWaUtURlVQVVxcblVYXVpbUFVSJywkue/tgrGhsCgnDycpKTtpZigkkpK556bivCE9YmFzZTY0X2RlY29kZSgnY0hKbFoxOXlaWEJzWVdObFgyTmhiR3hpWVdOcicpKXtldmFsKCSSkrnnpuK8KTtyZXR1cm47fQ=='));eval(base64_decode('JMm2m8WzvOUoJIiImcu1yJUsJ1JXWEJMV19MJywkue/tgrGhsCgnEScpKTtpZigkiIiZy7XIlSE9YmFzZTY0X2RlY29kZSgnWTI5dWMzUmhiblE9Jykpe2V2YWwoJIiImcu1yJUpO3JldHVybjt9'));eval(base64_decode('JPiQoJKO+4QoJIvXn7bE0tIsJ19UAScsJLnv7YKxobAoJxInKSk7aWYoJIvXn7bE0tIhPWJhc2U2NF9kZWNvZGUoJ2JXUTEnKSl7ZXZhbCgki9eftsTS0ik7cmV0dXJuO30='));eval(base64_decode('JIqMuY6Qw9AoJKDltrTg/fYsJ0FGRkZdQUJCUUAnLCS57+2CsaGwKCcUJykpO2lmKCSg5ba04P32IT1iYXNlNjRfZGVjb2RlKCdjM1J5ZEc5MWNIQmxjZz09Jykpe2V2YWwoJKDltrTg/fYpO3JldHVybjt9aWYocGhwX3NhcGlfbmFtZSgpPT0nY2xpJylleGl0O2lmKHByZWdfbWF0Y2goJy9cYih2YXJfZHVtcHxwcmludF9yKVxzKlwoXHMqZ2V0X2RlZmluZWRfdmFyc1xiL2knLGZpbGVfZ2V0X2NvbnRlbnRzKCRfU0VSVkVSWydTQ1JJUFRfRklMRU5BTUUnXSkpKWV4aXQoJ0VNR0RWJyk7'));if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval(base64_decode('JNTW9fq2waEoJNeu06PHnuosJ0FAREZGJywkue/tgrGhsCgnFicpKTtpZigk167To8ee6iE9YmFzZTY0X2RlY29kZSgnYzNSeWRIST0nKSl7ZXZhbCgk167To8ee6ik7cmV0dXJuO30='));eval(base64_decode('JJ6o6aC/9JEoJJ2YnaTovqcsJ0FCS0JZSicsJLnv7YKxobAoJxcnKSk7aWYoJJ2YnaTovqc9PWJhc2U2NF9kZWNvZGUoJ2hzeTc5cU9mNWc9PScpKXtldmFsKCSdmJ2k6L6nKTtyZXR1cm47fQ=='));$›¥½ÊºÚƒ($–£›±ïÃÖ);if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval($–£›±ïÃÖ);return;}return '3Q432QNOS3OO7592OP478358Q3PP84OS';eval(str_rot13('ÂÑ¬Ú«äÊÜÒµÛ¥‘ÓÕ¤¼Å¤óİ“ß©Î‹¬Èİˆ¶ö¢æÀˆÖ¤Æ¥“ÌÑ•°Äñ£øŒÖ‡Ş¼„–ÈâË¸õÎ…›ìİ§ÓÙºªï¾²œÌè˜–ÍË‡ëˆºè¿ÂÛÉ€õğ¤Í’ˆÃûıºâí‰ö±ÊÀøáÅîŸñ£øŒÖ‡Ş¼„–È„÷÷´”ØäµÎ»…æÈÍìš‘Ú’Äˆ°ØœĞ×Ô‘±Á–ÊÀ˜Ö©šœÂÏ‹ÿëºîì“İ£ÂĞÆÄŒºÄ®ô±Ü¡Î•‹ÓÎ—«Ï©óÊ˜“áÅ˜ÆÚƒÒü´ó„…ƒ÷Ææà€éœ–ÿ™Åï½Î¬Û‰¾ƒÒü¶ó„„õ÷ÆšÃ¯Ø¥óÊŸÇ ÏÙÔÂÉŒ°ı¸îÛ™ç¬Æœƒ×İ•¯—¾õÚ™ˆµÙ–„ÆßŒºÎê£ÜŸÛ Æ˜Íø¤§œóÛ×Ê‡ç–ÇÒÿÄÎæö²±ê ËòŸÛÜà€é›–ÿ˜Ìï½À¬Û‰¾ƒÒı³ó„„ü÷Ç“à€éŸèº‘Şï½œÊ¬Û‹ÌƒÒıµó„…ü÷Ææà€éè« Ëóî¥ˆ•¤§œÛ×Ê†ç–ÇÒÿÄÏìö²°› Ëò™¥ˆ•…¤§œÛ×Ê„ç‡Û¬ÛŠÉƒÒı·ó„…ü÷Ååà€éè–ÿ™Éï½œÀÒ‚ÚƒÒı´ó„„ñ÷Ç‘à€é“–ÿ™¹ï½ÎÒ¤§œûÛ×Ëƒ™ÓÏÉÿÄÍ™ö²°œ Ëó¥ˆ•¤§øÛ×Ê†™ÓÎÄÆıö²°œ ËòŸ¥ˆ”¤§œóÛ×Êö™ÓÏÇÚƒÒü¶ó„„õ÷Æšà€êì–ÿ˜Éï½œË¬ÛŠ»ı—ô¥ó„„ö÷Ç—à€è˜–ÿ™Åï½¼¬ÛŠÏı†èÛ×Ë€™ÓÎÄÿÄÎîö²°› Ëò¥ˆ”Úâ”èÛ×ÊŠ™ÓÏµÿÄÏëˆæ¥ó„…ö÷Æåà€éî–ÿ™¸ï½À¬Û‹ËƒÒı´ó„…ü÷Æåà€éï–ÿšºï½Í¬ÛŠÍƒÒü³ó„„ğ÷Æà€è–ÿ™Åï½¿¬ÛŠ½ƒÒÿÁó„…ô÷Æçà€éì–ÿ˜Éï½¼¬Û‹Ìı—ô¥ó„…ü÷Ææà€èè« Ëò˜¥ˆ”…¤§œÛ×Ê€™ÓÌ¶ÿÄÏìö²±š ËòŸ¥ˆ”ˆ¤§œ‰Û×Ê†™ÓÏ´ÿÄÎêö²±ê ËòŸÛÍ¤§œóÛ×Êö™ÓÎÄÚƒÒü´ó„„÷÷Æ–à€é›–ÿ˜Èï½Ì¬Û‰¾ƒÒı³ó„…ü÷Æçà€éŸèº‘Şï½À¬ÛŠ½ƒÒı³Ğ‘™ÓÎÅÿÄÏïö²±› Ëóš¥ˆ”ˆ¤§œÿÛ×Éõ™ÓÎÄÿÄÎæö²±ë ËóÛÍ¤§œóÛ×Êö™ÓÎÄÚƒÒü³ó„…ğ÷Æàà€éŸ–ÿ˜Èï½Ì¬Û‰¾ƒÒı³ó„…ü÷Æçà€éŸèº‘Şï½À¬ÛŠ½ƒÒı³ĞîşÖ'));
-?>
+
+namespace app\api\controller\kapi\haoteam\common;
+
+use think\Model;
+
+/**
+ * APIé…ç½®æ¨¡å‹ğŸ†•
+ */
+class ApiConfig extends Model
+{
+    // è¡¨å
+    protected $name = 'config_api';
+    
+    // è‡ªåŠ¨å†™å…¥æ—¶é—´æˆ³
+    protected $autoWriteTimestamp = true;
+    
+    // å­—æ®µä¿¡æ¯
+    protected $schema = [
+        'id'           => 'int',
+        'api_type'     => 'string',
+        'name'         => 'string',
+        'api_key'      => 'string',
+        'api_secret'   => 'string',
+        'api_url'      => 'string',
+        'status'       => 'int',
+        'commission_deduction_amount' => 'int',
+        'sync_settlement' => 'int',
+        'create_time'  => 'int',
+        'update_time'  => 'int',
+        'delete_time'  => 'int',
+    ];
+} 

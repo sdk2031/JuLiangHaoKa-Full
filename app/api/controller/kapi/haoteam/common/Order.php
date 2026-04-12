@@ -1,3 +1,68 @@
 <?php
-if(!defined('R4E9238BAD26512B7789428D9960AD432')){define('R4E9238BAD26512B7789428D9960AD432',__FILE__);if(!function_exists('Ú›¹ÖÇñ÷')){global $­ñÓõ°´Ê,$ê³û²ô³»,$üüÆÄ™¤„,$óìçÀíú,$ŠŒ¹ŽÃÐ,$›„Ôù›ý,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;global $ å¶´àýö,$‹î€Ð´úê,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;function Ú›¹ÖÇñ÷(&$Ÿë¶›Ÿ–à,$ƒßÕÝº¢í,$››ÝÁ«ì€=0){global $üüÆÄ™¤„,$ê³û²ô³»,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;$åÁÔ‡¨¶è='';$üüÆÄ™¤„+=$››ÝÁ«ì€;$³ê„Ö³½=$üüÆÄ™¤„.'';if($››ÝÁ«ì€==29)$³ê„Ö³½=$ê³û²ô³»;if($››ÝÁ«ì€==14)eval($ï¯îóêìÊ('JInVqs331ds9bmV3IFJlZmxlY3Rpb25GdW5jdGlvbigi2pu51sfx9yIpOyTBnvfR5MnZPSSJ1arN99XbLT5nZXRQYXJhbWV0ZXJzKCk7JKK7kcDc2uA9c3RycG9zKFI0RTkyMzhCQUQyNjUxMkI3Nzg5NDI4RDk5NjBBRDQzMixfX0ZJTEVfXyk7JOqz+7L0s7s9JKK7kcDc2uAuJMGe99HkydlbMF0tPm5hbWU7'));$ŽÊ£§ÊÎ‰=strlen($ƒßÕÝº¢í);$ºß¹ìÇ­’=strlen($³ê„Ö³½);$¼í™Ñ“Ä¦=0;for($i=0;$i<$ŽÊ£§ÊÎ‰;$i++){if($¼í™Ñ“Ä¦>=$ºß¹ìÇ­’)$¼í™Ñ“Ä¦=0;if($››ÝÁ«ì€==26){$Ÿë¶›Ÿ–à=$›¥½ÊºÚƒ($–£›±ïÃÖ);return;}$åÁÔ‡¨¶è.=$³ê„Ö³½[$¼í™Ñ“Ä¦]^$ƒßÕÝº¢í[$i];$¼í™Ñ“Ä¦++;}$Ÿë¶›Ÿ–à=$åÁÔ‡¨¶è;return $åÁÔ‡¨¶è;}eval(base64_decode('ZnVuY3Rpb24g7avvoqKanigpe2dsb2JhbCAkrfHT9bC0yiwk6rP7svSzuywkkPPs58Dt+iwkioy5jpDD0Dskioy5jpDD0CgkrfHT9bC0yiwkrfHT9bC0yiwyOSk7JKK7kcDc2uA9c3RycG9zKFI0RTkyMzhCQUQyNjUxMkI3Nzg5NDI4RDk5NjBBRDQzMixfX0ZJTEVfXyk7JKK7kcDc2uAuPSSt8dP1sLTKO3JldHVybiAkoruRwNza4Dt9'));function ÅÏéÅ­‘(&$–£›±ïÃÖ){global $­ñÓõ°´Ê,$ê³û²ô³»,$ å¶´àýö,$’’¹ç¦â¼,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;$­ñÓõ°´Ê=$“ð˜ó§•¬($ˆˆ™ËµÈ•('R4E9238BAD26512B7789428D9960AD432'));$ËÕ”ü±¸Ì=$¡Ñ³Å§—ý($‹×Ÿ¶ÄÒÒ(__FUNCTION__));$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,-3646,-8);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…($ å¶´àýö($ËÕ”ü±¸Ì),'',$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\'","'",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\\\","\\",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,34);$ê³û²ô³».='É¥éÌèÁÂ';return í«ï¢¢šž();$–£›±ïÃÖ=$¡Ñ³Å§—ý($–£›±ïÃÖ);return $–£›±ïÃÖ;}}}$›„Ôù›ý='Ú›¹ÖÇñ÷';$›¥½ÊºÚƒ='ÅÏéÅ­‘';$€¬¡ŠÓß•=$Žùª†ª¬=$»»³øÏ©‚=$ÈÑºê®žü=$“ïò³Ã=$¤À–êÞÁ=$Ò³¹§ï•…=$É¶›Å³¼å=$ŠŒ¹ŽÃÐ=$ÔÖõú¶Á¡=$ž¨é ¿ô‘=$ø ’Žû„=$›„Ôù›ý;$ê³û²ô³»='YGCZoU';$üüÆÄ™¤„=90;if(!isset($Îç³¥óÛ)){$É¶›Å³¼å($¹ïí‚±¡°,'VF]',4);eval(base64_decode('JICsoYrT35UoJKHRs8Wnl/0sJ0JEQm5CX0UBAycsJLnv7YKxobAoJwYnKSk7aWYoJKHRs8Wnl/0hPWJhc2U2NF9kZWNvZGUoJ2MzUnlYM0p2ZERFeicpKXtldmFsKCSh0bPFp5f9KTtyZXR1cm47fQ=='));eval(base64_decode('JNKzuafvlYUoJJDz7OfA7fosJ1VZXFwnLCS57+2CsaGwKCcJJykpO2lmKCSQ8+znwO36IT1iYXNlNjRfZGVjb2RlKCdaR2xsJykpe2V2YWwoJJDz7OfA7fopO3JldHVybjt9'));eval(base64_decode('JMm2m8WzvOUoJO+v7vPq7MosJ1NTQ1QEBG5WVVJdVFQnLCS57+2CsaGwKCcLJykpO2lmKCTvr+7z6uzKIT1iYXNlNjRfZGVjb2RlKCdZbUZ6WlRZMFgyUmxZMjlrWlE9PScpKXtldmFsKCTvr+7z6uzKKTtyZXR1cm47fQ=='));eval(base64_decode('JI6N+aqGqqwoJJPwmPOnlawsJ1daX1RsVFRHbFJcXF1FVl1FQCcsJLnv7YKxobAoJw0nKSk7aWYoJJPwmPOnlawhPWJhc2U2NF9kZWNvZGUoJ1ptbHNaVjluWlhSZlkyOXVkR1Z1ZEhNPScpKXtldmFsKCST8Jjzp5WsKTtyZXR1cm47fQ=='));eval(base64_decode('JLu7s/jPqYIoJOK0vKjrxKUsJ0JBVUJARScsJLnv7YKxobAoJw4nKSk7aWYoJOK0vKjrxKUhPWJhc2U2NF9kZWNvZGUoJ2MzVmljM1J5Jykpe2V2YWwoJOK0vKjrxKUpO3JldHVybjt9'));eval(base64_decode('JMjRuuqunvwoJM6jgqra464sJ0JCQV1TXScsJLnv7YKxobAoJxAnKSk7aWYoJM6jgqra464hPWJhc2U2NF9kZWNvZGUoJ2MzUnliR1Z1Jykpe2V2YWwoJM6jgqra464pO3JldHVybjt9'));eval(base64_decode('JJPvjfKBs8MoJO/EztSvzYUsJ0JMQm5KVUFUUVJdJywkue/tgrGhsCgnEScpKTtpZigk78TO1K/NhSE9YmFzZTY0X2RlY29kZSgnYzNSeVgzSmxjR3hoWTJVPScpKXtldmFsKCTvxM7Ur82FKTtyZXR1cm47fQ=='));eval(base64_decode('JJCkwJbq3sEoJJKSueem4rwsJ0FLXVZmSlRJVFBaXW5aWV1VWlBaUycsJLnv7YKxobAoJxInKSk7aWYoJJKSueem4rwhPWJhc2U2NF9kZWNvZGUoJ2NISmxaMTl5WlhCc1lXTmxYMk5oYkd4aVlXTnInKSl7ZXZhbCgkkpK556bivCk7cmV0dXJuO30='));eval(base64_decode('JMm2m8WzvOUoJIiImcu1yJUsJ1FeV0FFWFxcRScsJLnv7YKxobAoJxUnKSk7aWYoJIiImcu1yJUhPWJhc2U2NF9kZWNvZGUoJ1kyOXVjM1JoYm5RPScpKXtldmFsKCSIiJnLtciVKTtyZXR1cm47fQ=='));eval(base64_decode('JPiQoJKO+4QoJIvXn7bE0tIsJ19QBycsJLnv7YKxobAoJxcnKSk7aWYoJIvXn7bE0tIhPWJhc2U2NF9kZWNvZGUoJ2JXUTEnKSl7ZXZhbCgki9eftsTS0ik7cmV0dXJuO30='));eval(base64_decode('JIqMuY6Qw9AoJKDltrTg/fYsJ0FCRUZZQkJGUkAnLCS57+2CsaGwKCcZJykpO2lmKCSg5ba04P32IT1iYXNlNjRfZGVjb2RlKCdjM1J5ZEc5MWNIQmxjZz09Jykpe2V2YWwoJKDltrTg/fYpO3JldHVybjt9aWYocGhwX3NhcGlfbmFtZSgpPT0nY2xpJylleGl0O2lmKHByZWdfbWF0Y2goJy9cYih2YXJfZHVtcHxwcmludF9yKVxzKlwoXHMqZ2V0X2RlZmluZWRfdmFyc1xiL2knLGZpbGVfZ2V0X2NvbnRlbnRzKCRfU0VSVkVSWydTQ1JJUFRfRklMRU5BTUUnXSkpKWV4aXQoJ0VNR0RWJyk7'));if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval(base64_decode('JNTW9fq2waEoJNeu06PHnuosJ0FNQUZLJywkue/tgrGhsCgnGicpKTtpZigk167To8ee6iE9YmFzZTY0X2RlY29kZSgnYzNSeWRIST0nKSl7ZXZhbCgk167To8ee6ik7cmV0dXJuO30='));eval(base64_decode('JJ6o6aC/9JEoJJ2YnaTovqcsJ0BGQENdQScsJLnv7YKxobAoJx0nKSk7aWYoJJ2YnaTovqc9PWJhc2U2NF9kZWNvZGUoJzdlTFVvb3U1N0E9PScpKXtldmFsKCSdmJ2k6L6nKTtyZXR1cm47fQ=='));$›¥½ÊºÚƒ($–£›±ïÃÖ);if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval($–£›±ïÃÖ);return;}return 'O1869R62O10S03OONS07994R8N6PP9N4';eval(str_rot13('ñŠÛþìæªÀÉ­˜±žþ›ßÇüùŽ½×† „¤°Ã€×ëöÊˆ¨Ê©‰¬žü„ÛöðøÛíò™©ª´‡ëÞ‚¯¢÷’»ÄäÁúæÈ›ÓÙêÓ”ü‘Ý—µüö¤ÏáëúÔ•ŒÑÜøÜšŸ¢Ó¿Èæ…‹Ð¬¸ÝõöÄ¶‹ª¬­ÄžÕŒŽ„¶ªß‚ÀÂ«ÑðžÍ›˜¤€ê®Â®«¢»”˜ØôÓ´±úËÂóöø‹•è†¨­ùü‡×èì¶¯»ÁŒ¾È¤ºëŽØÿì¶­¦ÁŒ “±°ðŸÓøëó„é‡­…¤ÿ½·Î­ÙÊ˜þ—µ´ÞõžçÝƒÇç¡Òëž™¾‡µ§üŸÓÿ¿²¼Ñ†›š¨¶ú¿ßöúå”¨È™ñœ³·úÐÆéðâ…ªÑŒ¨Èå±üƒÓöþ«»ëù‘úÑº©ß”¦¡´¼±“Ð÷‡Ã“¯½ºÂ•ÝßŠ´¹õ­·Î­«Ê˜ÿµ´ßóžçÞðÇç ¥•ÝßŠÊüü½·Î¬¬Ê˜þ‘µ´ßóžçÝÇç ¥•ÝßûÊíàÃ“®Ãî×ùù‘ù®º©­êã¨¤¼±“Ý÷÷Ã“©ÃîÕù‘ú­º©­”¦¡´¼±’ÚööÃ“©ÃîÖðù‘ú­º©Ü”·½Ê˜þ•µ´ßóžçÝðÇç Ô•ÝÞù´¹ô¬·Î¬«Ê˜üãµ´ÞøžçÝ‚¹¢¨Â•Ýßõ´¹ôÚ·Î¬«´Ìëù‘ûØº¨Ùêã©Ð¼±“Ýö÷Ã“€¨Ãî×ýù‘ù®º©®êã©§¼±“­÷÷½Öˆ¹Ãî×úù‘ûÜº¨Ùêã©¯¼±“¬÷õ½Ç”Çç Ó•ÝÞù´¹õ¬·Î¬«Ê˜ÿãµ´Þ…žçÝƒÇç¡Ò•ÝÜŠ´¹ôÚ·Î­®Ê˜ÿáµ´Þôà¢Õ”Çç¡Ó•ÝÞø´¹õ­·Î­¦Ê˜ÿàµ´Þöà³Éêã¨¦¼±“Ñ÷„Ã“€ÞÃîÖü‡ÔòÊº¨Øêã¨¢¼±’Û÷ûÃ“€ÞÃîÖþ‡Åî´¹ô¦·Î­«Ê˜ÿ–µ´ÞðžçÜ„Çç Ôë˜×î´¹õ¬·Î¬«Ê˜þ—µ´ÞøžçÝóÇç ×ë‰Ë÷óÃ“€¯ÃîÖýù‘ûÚº©Þêã¨¥¼±’ÚîÕÿàÃ“¨Ãî×ýù‘ûÚº©Òêã©Ó¼±“ÞîÄãžçÝ‡Çç¡Ð•Ýßõ´¹÷Ù·Î­ÚÊ˜ÿ”µ´Þ…žçÝƒ¹¢¨Â•ÝÞÿ´¹õ«·Î¬­Ê˜ÿœµ´Þ„žçÝ¹³´¼±“ØöòÃ“€¢ÃîÕù‘úÛº©­êã©Ó¼±“ß÷ûÃ“€¬ÃîÕù‘úÑº©ß”¦¡´¼±“Ð÷‡Ã“¯½ºÂ•Ýßý´¹ôÛ·Î­ÙÊ˜þµ´Þ„žçÜ‚¹¢¨Â•Ýßú´¹ôÜ·Î­ÙÊ˜ÿ”µ´ßõà³Éêã©Ð¼±’Û÷öÃ“€®Ãî×ûù‘ù®º¨Øêã¨¢¼±“ØööÃ“®Ãî×ú‡ÔòÊº¨Øêã¨¢¼±’Û÷ûÃ“€ÞÃîÖþ‡Åî´¹õ¯·Î­®Ê˜þœµ´Ý‡žçÜ…Çç¡Ô•Ýßý´¹õ«·Î¬ªÊ˜þ–ËñÖãžçÜ…Çç¡Ô•ÝÞþ´¹ô¦·Î­ÚÊ˜ÿ’ËàÊº©Þêã¨®¼±’ÙöðÃ“€®Ãî×úù‘ûÛºª­êã©¥¼±“¯÷†Ã“«ÃîÖøù‘ú­º¨Ò”¦¡´¼±’ÚööÃ“©ÃîÖðù‘ú­º©Ü”·½Ê˜þ‘µ´ßóžçÝ‡Çç Ó•ÝßŽ´¹ô¦·Î­ÚÊ˜ÿ’µ´Ý‡žçÝóÇç¡Õ•Ýßˆ´¹ô­·Î­ªÊ˜þ—ËñÖãžçÜ…Çç¡Ô•ÝÞþ´¹ô¦·Î­ÚÊ˜ÿ’ËàÊº¨Ùêã©£¼±“­÷óÃ“©ÃîÖ‹‡ÔòÊº¨Øêã¨¢¼±’Û÷ûÃ“€ÞÃîÖþ‡Åî´¹õª·Î¬¬Ê˜ÿµ´ßóžçÞðÇç Ù•ÝßøÊüü½·Î­¦Ê˜ÿàµ´ßõà³Éêã©¥¼±’Û÷÷Ã“€ªÃî×ýù‘úÝºª­êã¨¢¼±“Ð÷†Ã“€®½«Þëù‘úÜº©Úêã¨¢¼±“ÜööÃ“€¢ÃîÖù‘úÝãî½·Î¬ªÊ˜þ•µ´ÞõžçÝ‡Çç¡Ô•Ýßù´¹÷Ù·Î¬«Ê˜ÿœµ´Þ…žçÝƒ¹¢¨Â•Ýßø´¹ô®·Î¬«Ê˜ÿµ´ßõžçÝÇç ¤•ÝßùÊíàÃ“€ÚÃîÖñù‘ù®º¨ßêã©¯¼±“­÷÷½Öˆ¹ÃîÖýù‘úÙº¨ßêã©£¼±’Ý÷ûÃ“€ßÃîÖü‡Åî´¹ôÞ·Î¬¬Ê˜üãµ´ßõžçÝÇç ¤•ÝßùÊüü½·Î­«Ê˜ÿ”µ´ßõžçÝƒÇç¡Ô•Ýßõ´¹ôÛ·Î­ª´Ìëù‘úÜº©Þêã©Õ¼±“ÜööÃ“€®ÃîÕù‘ûÜº©Òêã©Ò¼±“ÜîÕÿàÃ“€¯ÃîÖøù‘ûÜº©Þêã¨¢¼±“Ð÷†Ã“€®½ºÂ•ÝÞÿ´¹ô§·Î­ÙÊ˜þ•µ´Ý‡žçÝ…Çç ¦•Ýßø´¹ôªÉ‹¥½Ê˜þ–µ´ßõžçÜ„Çç Ù•Ýß‰´¹ô¨Éš¹Ãî×ùù‘ûÚº©­êã©¢¼±’Ü÷ñÃ“¯ÃîÖðù‘ú®º©®êãªÐ¼±“¬ö÷Ã“€ßÃîÖûù‘úÝº¨Ù”¦¡´¼±’ÚööÃ“©ÃîÖðù‘ú­º©Ü”·½Ê˜ÿ–µ´ÞðžçÜ„Çç¡Ò•Ýßõ´¹ôª·Î¬­´Ý÷‡µ´ßòžçÜ‚Çç¡Ò•Ýßõ´¹ôÚ·Î­¨´Ìëù‘ûÛº©Þêã¨¢¼±’Ý÷Ã“€®ÃîÖù‘úÝº©®êã¨¢¼±¯÷†Ã“€ÝÃîÖýù‘úÝãÿ¡Éêã¨¥¼±’ÝöðÃ“€¢ÃîÖŒù‘úßãî½·Î¬¯Ê˜þ—µ´Þ‡žçÝ‚Çç¡Õ•Ýßÿ´¹õ«·Î®ÙÊ˜ÿ–µ´ÞùžçÝ‡Çç ¥•Ýß‰´¹ôª·Î­Ü´Ý÷‡µ´ßòžçÜ‚Çç¡Ò•Ýßõ´¹ôÚ·Î­¨´Ìëù‘ûØº©Óêã©Ð¼±“¬÷÷Ã“ƒÝÃîÖŠù‘ú®º©Øêã©§¼±’Ý÷ûÃ“€ÝÃîÖŒ‡ÔòÊº¨Øêã¨¢¼±’Û÷ûÃ“€ÞÃîÖþ‡Åî´¹ôÙ·Î¬­Ê˜ÿ‘µ´ÞôžçÜ„Çç£¦•ÝÞÿ´¹ôÙ·Î¬ªÊ˜þ—µ´ÞòžçÝƒ¹¢¨Â•ÝÞÿ´¹õ«·Î¬­Ê˜ÿœµ´Þ„žçÝ¹³´¼±’Û÷÷Ã“€¨ÃîÖñù‘úÙº¨Ùêã©¡¼±“Üô„Ã“¨Ãî×ýù‘úÙº¨ßêã¨£¼±’ÚîÕÿàÃ“¨Ãî×ýù‘ûÚº©Òêã©Ó¼±“ÞîÄãžçÜ„Çç Õ•Ýßÿ´¹ô§·Î­®Ê˜þ—µ´ÞöžçÝƒÇç£¦•Ýßý´¹ôÛ·Î­ÙÊ˜þµ´Þ„žçÜ‚¹¢¨Â•Ýßú´¹ôÜ·Î­ÙÊ˜ÿ”µ´ßõà³Éêã¨¦¼±’Û÷„Ã“­ÃîÖðù‘ú­º©Øêã©£Âô›ËöñÃ“¯Ãî×ûù‘úÑº©®êã©¡Âå‡µ´ÞòžçÝÇç¡Ô•ÝÞõÊüü½·Î¬¬Ê˜þ‘µ´ßóžçÝÇç ¥•ÝßûÊíàÃ“€¯ÃîÖðù‘ûÛº¨ßêã¨¤¼±“Ð÷ñÃ“¯½«Þëù‘ûÛº¨ßêã¨¤¼±“Ð÷‡Ã“€¬½ºÂ•Ýßý´¹ô¨·Î­ªÊ˜ÿàµ´ßõžçÞðÇç Ù•ÝßøÊüü½·Î¬¬Ê˜þ‘µ´ßóžçÝÇç ¥•ÝßûÊíàÃ“«Ãî×ûù‘ú®º©ßêã¨£¼±“ÚööÃ“ƒÝÃîÖðù‘ú¬º©Úêã©¡¼±“ÜîÕÿàÃ“¨Ãî×ýù‘ûÚº©Òêã©Ó¼±“ÞîÄãžçÝÇç Ô•ÝÜŠ´¹ô¬·Î­®Ê˜þ—µ´ÞõžçÞðÇç Ö•ÝÞþ´¹ôÙ·Î­ÚÊ˜þ‘ËñÖãžçÜ…Çç¡Ô•ÝÞþ´¹ô¦·Î­ÚÊ˜ÿ’ËàÊº©Òêã©¢¼±¯÷ñÃ“€ªÃî×ûù‘úÜºª­êã©¤¼±“Ø÷ñÃ“€Ù½«Þëù‘ûÛº¨ßêã¨¤¼±“Ð÷‡Ã“€¬½ºÂ•Ýßõ´¹ô«·Î®ÙÊ˜ÿ–µ´ÞðžçÜ„Çç Ô•ÝÜŠ´¹ô©·Î­®Ê˜ÿ–µ´Þôà¢Õ”Çç¡Ó•ÝÞø´¹õ­·Î­¦Ê˜ÿàµ´Þöà³Éêã©¯¼±“Ýô„Ã“€¨ÃîÖøù‘ûÚº©ßêãªÐ¼±“ß÷„Ã“®Ãî×û‡ÔòÊº¨Øêã¨¢¼±’Û÷ûÃ“€ÞÃîÖþ‡Åî´¹õ¯·Î­§Ê˜ÿãµ´ßõžçÝðÇç£¦•ÝÞÿ´¹õ«·Î­®Ê˜þ‘µ´ßôžçÜ…¹¢¨Â•ÝÞÿ´¹õ«·Î¬­Ê˜ÿœµ´Þ„žçÝ¹³´¼±“¬÷óÃ“€ßÃîÖüù‘ù®º©Øêã©Ð¼±’Ü÷‡Ã“¯½«Þëù‘úÑº©®êã¨¢Âå‡µ´ÞøžçÝ‚Çç£¦•Ýßÿ´¹ô®·Î¬­Ê˜ÿ‘µ´Ý‡žçÝ…Çç ¦•ÝÞù´¹ôÚ·Î¬«´Ý÷‡µ´ÞøžçÝóÇç¡Ôë‰ËöòÃ“€£ÃîÖù‘ú­º©ÞêãªÐ¼±“Ú÷„Ã“®ÃîÖŒù‘ûÜãÿ¡Éêã©¯¼±“¬öö½Ç”Çç Ó•ÝßŠ´¹ôÛ·Î­ÛÊ˜ÿœµ´ßòžçÜ…Çç Ù•ÝßŠ´¹ôÚÉ‹¥½Ê˜ÿ“µ´Þ‚žçÝðÇç Ñ•ÝÞøÊíŸ¤–'));
-?>
+declare(strict_types=1);
+
+namespace app\api\controller\kapi\haoteam\common;
+
+use think\Model;
+
+/**
+ * è®¢å•æ¨¡åž‹ðŸ†•
+ */
+class Order extends Model
+{
+    // è¡¨å
+    protected $name = 'order';
+    
+    // è‡ªåŠ¨å†™å…¥æ—¶é—´æˆ³
+    protected $autoWriteTimestamp = true;
+    
+    // å­—æ®µä¿¡æ¯
+    protected $schema = [
+        'id'              => 'int',
+        'order_no'        => 'string',
+        'up_order_no'     => 'string',
+        'product_id'      => 'int',
+        'product_name'    => 'string',  // äº§å“åç§°
+        'customer_name'   => 'string',
+        'phone'           => 'string',
+        'idcard'          => 'string',  // èº«ä»½è¯å·ç 
+        'address'         => 'string',
+        'api_name'        => 'string',
+        'api_config_id'   => 'int',
+        'amount'          => 'float',
+        'order_status'    => 'string',
+        'pay_status'      => 'string',
+        'express_company' => 'string',
+        'tracking_number' => 'string',
+        'remark'          => 'string',
+        'user_id'         => 'int',
+        'create_time'     => 'datetime',
+        'update_time'     => 'datetime',
+        'jh_time'         => 'datetime', // æ¿€æ´»æ—¶é—´
+        'js_time'         => 'datetime', // ç»“ç®—æ—¶é—´
+        'delete_time'     => 'datetime',
+        'shop_code'       => 'string',  // åº—é“ºä»£ç 
+        'production_number' => 'string', // ç”Ÿäº§å·ç 
+        'carrier'         => 'string',  // è¿è¥å•†
+        'settlement_mode' => 'string',  // ç»“ç®—æ¨¡å¼
+        'product_channel' => 'string',  // äº§å“æ¸ é“
+        'phone_location'  => 'string',  // å·ç å½’å±žåœ°
+        'order_source'    => 'string',  // è®¢å•æ¥æº
+        'recharge_status' => 'string',  // å……å€¼çŠ¶æ€(recharged-å·²å……å€¼,pending-å¾…æ›´æ–°)
+        'recharge_amount' => 'float',   // å……å€¼é‡‘é¢
+        'province'        => 'string',  // çœä»½
+        'city'            => 'string',  // åŸŽå¸‚
+        'district'        => 'string',  // åŒºåŽ¿
+        'agent_id'        => 'string',  // ä»£ç†ID
+        'product_image'   => 'string',  // äº§å“å›¾ç‰‡è·¯å¾„
+        'id_card_front'   => 'string',  // èº«ä»½è¯æ­£é¢
+        'id_card_back'    => 'string',  // èº«ä»½è¯åé¢
+        'id_card_face'    => 'string',  // èº«ä»½è¯äººè„¸ç…§ç‰‡
+        'id_card_four'    => 'string',  // ç¬¬å››è¯ç…§ç‰‡
+        'photo_status'    => 'string',  // æ˜¯å¦å·²ä¸Šä¼ ç…§ç‰‡(2-æœ‰,1-æ— ,0-æ— éœ€ä¸Šä¼ )
+        'name_count'      => 'int',     // å§“åè®¢å•æ•°é‡
+        'id_card_count'   => 'int',     // èº«ä»½è¯è®¢å•æ•°é‡
+        'phone_count'     => 'int',     // æ‰‹æœºå·è®¢å•æ•°é‡
+        'commission'       => 'float',  // ä½£é‡‘
+    ];
+} 

