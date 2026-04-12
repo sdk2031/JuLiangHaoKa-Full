@@ -774,7 +774,7 @@ CREATE TABLE `config_api`  (
 -- ----------------------------
 -- Records of config_api
 -- ----------------------------
-INSERT INTO `config_api` VALUES (72, 'jlcloud', '巨量互联', '', '', '', '', NULL, 1, 0, 5, '', NULL, 1770980367, 1771045138, 1, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, '2026-02-14 12:59:13', '订单同步完成，查询范围：最近120天，共处理 2 个订单，成功 2 个，失败 0 个', '');
+INSERT INTO `config_api` VALUES (72, 'jlcloud', '巨量互联', '', '', '', '', NULL, 1, 0, 5, '', NULL, 1770980367, 1771045138, 0, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, '2026-02-14 12:59:13', '订单同步完成，查询范围：最近120天，共处理 2 个订单，成功 2 个，失败 0 个', '');
 INSERT INTO `config_api` VALUES (73, 'gth91', '91敢探号', '', '', '', 'https://notify.91haoka.cn', NULL, 1, 0, 0, '', '{\"login_name\":\"\",\"login_password\":\"\",\"supplier_name\":\"号卡秒反\",\"supplier_shop_id\":\"610319\",\"commission_deduction\":20}', 1771346218, 1772253442, 0, 0, 'light', 60, 0, NULL, NULL, 0, 10, 1000, 120, NULL, NULL, '');
 
 -- ----------------------------
