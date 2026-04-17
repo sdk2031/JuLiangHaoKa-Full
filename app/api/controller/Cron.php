@@ -3,6 +3,7 @@ namespace app\api\controller;
 
 use think\facade\Db;
 use app\common\service\ImageTemplateService;
+use app\common\service\CloudExportService;
 
 /**
  * 统一定时任务调度控制器🆕
@@ -141,6 +142,24 @@ class Cron
             );
         }
 
+        // 每分钟执行 WPS 补偿回传任务
+        try {
+            $callbackSyncResults = $this->runCloudexportCallbackSyncTasks($debug);
+            foreach ($callbackSyncResults['results'] as $item) {
+                $results[] = $item;
+            }
+            if ($debug && !empty($callbackSyncResults['debug'])) {
+                $debugInfo = array_merge($debugInfo, $callbackSyncResults['debug']);
+                $pendingTasks = array_merge($pendingTasks, $callbackSyncResults['pending_tasks']);
+            }
+        } catch (\Exception $e) {
+            $results[] = array(
+                'api' => 'WPS补偿回传',
+                'task' => 'cloudexport_callback_sync',
+                'result' => '执行失败: ' . $e->getMessage()
+            );
+        }
+
         // 每分钟执行云账户失败打款重试任务
         try {
             $payoutRetryResult = $this->runPayoutRetryTask();
@@ -258,6 +277,7 @@ class Cron
                 'order_sync' => '订单查询',
                 'callback_retry' => '回调重试',
                 'payout_retry' => '打款重试',
+                'cloudexport_callback_sync' => 'WPS补偿回传',
                 'generate_images' => '商品转图',
                 'reset_daily_stats' => '日统计重置',
                 'reset_monthly_stats' => '月统计重置'
@@ -1217,6 +1237,25 @@ class Cron
         }
     }
 
+    public function triggerCloudexportCallbackSync()
+    {
+        try {
+            $configId = intval(input('config_id', input('id', 0)));
+            if ($configId <= 0) {
+                return json(array('code' => 1, 'msg' => '参数错误'));
+            }
+            $result = $this->runSingleCloudexportCallbackSync($configId, true);
+            return json(array(
+                'code' => !empty($result['success']) ? 0 : 1,
+                'msg' => $result['message'],
+                'data' => $result,
+                'time' => date('Y-m-d H:i:s')
+            ));
+        } catch (\Exception $e) {
+            return json(array('code' => 1, 'msg' => '执行失败: ' . $e->getMessage()));
+        }
+    }
+
     /**
      * 查看回调任务状态
      * GET /api/cron/callbackStatus?security_key=xxx
@@ -1269,5 +1308,153 @@ class Cron
         } catch (\Exception $e) {
             return json(array('code' => 1, 'msg' => '获取失败: ' . $e->getMessage()));
         }
+    }
+
+    private function runCloudexportCallbackSyncTasks($debug = 0)
+    {
+        $results = array();
+        $debugInfo = array();
+        $pendingTasks = array();
+
+        if (!$this->hasCloudexportColumnMap()) {
+            return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks);
+        }
+
+        $configs = Db::name('config_cloudexport')
+            ->field('id,api_name,self_channel_id,remark,export_column_map')
+            ->order('id', 'desc')
+            ->select()
+            ->toArray();
+
+        foreach ($configs as $config) {
+            $meta = $this->decodeCloudexportMeta($config['export_column_map'] ?? '');
+            $enabled = intval($meta['__callback_cron_enabled'] ?? 0) ? 1 : 0;
+            $interval = max(1, intval($meta['__callback_cron_interval'] ?? 5));
+            $lastTime = trim((string)($meta['__callback_cron_last_time'] ?? ''));
+            $webhookUrl = trim((string)($meta['__callback_trigger_webhook_url'] ?? ''));
+            $willExecute = $enabled && $webhookUrl !== '' && $this->shouldRun($lastTime, $interval);
+            $displayName = $this->formatCloudexportDisplayName($config);
+
+            if ($debug) {
+                $debugInfo[] = array(
+                    'api' => $displayName,
+                    'config_id' => intval($config['id']),
+                    'task' => 'WPS补偿回传',
+                    'enabled' => $enabled ? '✓开启' : '✗关闭',
+                    'last_time' => $lastTime ?: '从未执行',
+                    'interval' => $interval . '分钟',
+                    'webhook' => $webhookUrl !== '' ? '✓已配置' : '✗未配置',
+                    'should_run' => $this->shouldRun($lastTime, $interval) ? '✓到期' : '✗未到期',
+                    'will_execute' => $willExecute ? '✓执行' : '✗跳过'
+                );
+                if ($willExecute) {
+                    $pendingTasks[] = '[WPS补偿回传] ' . $displayName;
+                }
+            }
+
+            if ($willExecute) {
+                $result = $this->runSingleCloudexportCallbackSync(intval($config['id']), false, $config, $meta);
+                $results[] = array(
+                    'api' => $displayName,
+                    'task' => 'cloudexport_callback_sync',
+                    'result' => $result['message']
+                );
+            }
+        }
+
+        return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks);
+    }
+
+    private function runSingleCloudexportCallbackSync($configId, $force = false, $config = null, $meta = null)
+    {
+        if ($config === null) {
+            if (!$this->hasCloudexportColumnMap()) {
+                return array('success' => false, 'message' => '当前环境不支持补偿回传');
+            }
+            $config = Db::name('config_cloudexport')
+                ->field('id,api_name,self_channel_id,remark,export_column_map')
+                ->where('id', $configId)
+                ->find();
+            if (empty($config)) {
+                return array('success' => false, 'message' => '配置不存在');
+            }
+        }
+
+        if ($meta === null) {
+            $meta = $this->decodeCloudexportMeta($config['export_column_map'] ?? '');
+        }
+
+        $webhookUrl = trim((string)($meta['__callback_trigger_webhook_url'] ?? ''));
+        $enabled = intval($meta['__callback_cron_enabled'] ?? 0) ? 1 : 0;
+        if (!$force && !$enabled) {
+            return array('success' => false, 'message' => '补偿回传未启用');
+        }
+        if ($webhookUrl === '') {
+            return array('success' => false, 'message' => '未配置补偿Webhook地址');
+        }
+
+        $payload = array(
+            'action' => 'callback_sync',
+            'config_id' => intval($config['id']),
+            'trigger_source' => $force ? 'manual_trigger' : 'system_timer',
+            'trigger_time' => date('Y-m-d H:i:s'),
+        );
+
+        $result = CloudExportService::exportByWebhook($webhookUrl, $payload, '');
+        $message = trim((string)($result['message'] ?? ''));
+        if ($message === '') {
+            $message = !empty($result['success']) ? '触发成功' : '触发失败';
+        }
+
+        $meta['__callback_cron_last_time'] = date('Y-m-d H:i:s');
+        $meta['__callback_cron_last_result'] = mb_substr($message, 0, 500);
+        Db::name('config_cloudexport')->where('id', intval($config['id']))->update(array(
+            'export_column_map' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'update_time' => date('Y-m-d H:i:s')
+        ));
+
+        return array(
+            'success' => !empty($result['success']),
+            'message' => $message,
+            'config_id' => intval($config['id']),
+            'webhook_url' => $webhookUrl
+        );
+    }
+
+    private function hasCloudexportColumnMap()
+    {
+        static $checked = null;
+        if ($checked !== null) {
+            return $checked;
+        }
+        try {
+            $checked = count(Db::query("SHOW COLUMNS FROM `config_cloudexport` LIKE 'export_column_map'")) > 0;
+        } catch (\Exception $e) {
+            $checked = false;
+        }
+        return $checked;
+    }
+
+    private function decodeCloudexportMeta($input)
+    {
+        if (is_array($input)) {
+            return $input;
+        }
+        $decoded = json_decode((string)$input, true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    private function formatCloudexportDisplayName($config)
+    {
+        $apiName = trim((string)($config['api_name'] ?? ''));
+        $remark = trim((string)($config['remark'] ?? ''));
+        $name = $apiName === '' ? '云导出#' . intval($config['id'] ?? 0) : $apiName;
+        if ($apiName === '自营' && !empty($config['self_channel_id'])) {
+            $name = '自营/渠道#' . intval($config['self_channel_id']);
+        }
+        if ($remark !== '') {
+            $name .= '(' . $remark . ')';
+        }
+        return $name;
     }
 }

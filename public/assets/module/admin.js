@@ -1926,7 +1926,7 @@ layui.define(["layer"], function(f) {
         })
     }
     d = h.extend({
-        pageTabs: true,
+        pageTabs: false,
         cacheTab: true,
         openTabCtxMenu: true,
         maxTabNum: 20,
@@ -1946,6 +1946,20 @@ layui.define(["layer"], function(f) {
             if (a[o[g]] !== undefined) {
                 d[o[g]] = a[o[g]]
             }
+        }
+    }
+    var m = {
+        defaultTheme: "theme-white",
+        closeFooter: true,
+        cacheTab: true,
+        pageTabs: false,
+        tabAutoRefresh: "true",
+        navArrow: "arrow2"
+    };
+    for (var y in m) {
+        if (m.hasOwnProperty(y)) {
+            d[y] = m[y];
+            n.putTempData(y, m[y], true)
         }
     }
     n.recoverState();

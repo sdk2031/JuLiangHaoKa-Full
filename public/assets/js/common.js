@@ -1,6 +1,6 @@
 ﻿/** EasyWeb iframe v3.1.7 date:2020-03-11 License By http://easyweb.vip */
 layui.config({
-    version: "318",
+    version: "319",
     base: getProjectUrl() + "assets/module/"
 }).extend({
     steps: "steps/steps",

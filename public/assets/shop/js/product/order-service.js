@@ -1,4 +1,24 @@
 ﻿(function (win) {
+    function formatMessageHtml(text) {
+        var content = String(text == null ? '' : text);
+        return content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\n/g, '<br>');
+    }
+
+    function showSubmitError(message) {
+        var rawMessage = String(message == null ? '' : message);
+        if (rawMessage.indexOf('\n') === -1) {
+            layer.msg(rawMessage || '订单提交失败', { icon: 2, time: 2500 });
+            return;
+        }
+        layer.msg('<div style="white-space:normal;line-height:1.8;">' + formatMessageHtml(rawMessage) + '</div>', { icon: 2, time: 2500 });
+    }
+
     function getSubmitButton() {
         return document.querySelector('.submit-btn') || document.querySelector('button[onclick*="submitOrder"]');
     }
@@ -70,6 +90,16 @@
         if (win.NEED_FOUR_PHOTO) {
             formData.append('id_card_four', win.uploadedImages.id_card_four || '');
         }
+
+        var customFields = {};
+        document.querySelectorAll('[name^="custom_field__"]').forEach(function (field) {
+            var name = String(field.name || '').replace(/^custom_field__/, '');
+            if (!name) {
+                return;
+            }
+            customFields[name] = field.value || '';
+        });
+        formData.append('custom_order_fields', JSON.stringify(customFields));
 
         return formData;
     }
@@ -145,7 +175,7 @@
 
     function handleSubmitSuccess(data) {
         if (data.code !== 1) {
-            layer.msg(data.msg || '订单提交失败', { icon: 2 });
+            showSubmitError(data.msg || '订单提交失败');
             return;
         }
 

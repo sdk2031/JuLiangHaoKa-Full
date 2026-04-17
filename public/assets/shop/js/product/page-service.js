@@ -1,4 +1,4 @@
-﻿(function (win) {
+(function (win) {
     var currentLayer = null;
     var currentJquery = null;
 
@@ -93,6 +93,100 @@
         setTimeout(function () {
             document.getElementById('orderDrawer').style.display = 'none';
         }, 300);
+    }
+
+    function parseCustomFieldConfig() {
+        var raw = String(win.PRODUCT_CUSTOM_FIELDS || '').trim();
+        if (!raw) {
+            return [];
+        }
+        try {
+            var parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            return parsed.map(function (item) {
+                item = item || {};
+                var normalized = {
+                    name: String(item.name || '').trim(),
+                    label: String(item.label || '').trim(),
+                    type: String(item.type || 'text').trim() || 'text',
+                    required: String(item.required || item.required === 0 ? item.required : '0') === '1',
+                    placeholder: String(item.placeholder || '').trim(),
+                    options: []
+                };
+                if (normalized.type !== 'select' && normalized.type !== 'textarea' && normalized.type !== 'number' && normalized.type !== 'date') {
+                    normalized.type = 'text';
+                }
+                if (Array.isArray(item.options)) {
+                    normalized.options = item.options.map(function (option) {
+                        if (typeof option === 'string') {
+                            return {value: option.trim(), label: option.trim()};
+                        }
+                        if (option && typeof option === 'object') {
+                            var value = String(option.value || option.label || '').trim();
+                            var label = String(option.label || option.value || '').trim();
+                            return value ? {value: value, label: label || value} : null;
+                        }
+                        return null;
+                    }).filter(Boolean);
+                }
+                return normalized;
+            }).filter(function (item) {
+                return item.name && item.label;
+            });
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderCustomOrderFields() {
+        var container = document.getElementById('customOrderFieldsContainer');
+        if (!container) {
+            return;
+        }
+        var fields = parseCustomFieldConfig();
+        if (!fields.length) {
+            container.innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        fields.forEach(function (field) {
+            var inputHtml = '';
+            var placeholder = escapeHtml(field.placeholder || ('请输入' + field.label));
+            var label = escapeHtml(field.label);
+            var requiredAttr = field.required ? ' required' : '';
+            var requiredMark = field.required ? '<span class="required">*</span>' : '';
+            if (field.type === 'textarea') {
+                inputHtml = '<textarea name="custom_field__' + field.name + '" class="form-input" placeholder="' + placeholder + '"' + requiredAttr + ' rows="3" style="resize: vertical; min-height: 60px;"></textarea>';
+            } else if (field.type === 'select') {
+                inputHtml = '<select name="custom_field__' + field.name + '" class="form-input"' + requiredAttr + '><option value="">请选择' + label + '</option>' +
+                    field.options.map(function (option) {
+                        return '<option value="' + escapeHtml(option.value) + '">' + escapeHtml(option.label) + '</option>';
+                    }).join('') + '</select>';
+            } else {
+                var inputType = field.type === 'number' ? 'number' : (field.type === 'date' ? 'date' : 'text');
+                inputHtml = '<input type="' + inputType + '" name="custom_field__' + field.name + '" class="form-input" placeholder="' + placeholder + '"' + requiredAttr + '>';
+            }
+
+            html += '<div class="form-group custom-order-field-group" data-custom-field="' + field.name + '">' +
+                '<div class="form-row">' +
+                '<label class="form-label">' + label + requiredMark + '</label>' +
+                '<div class="form-input-wrapper">' + inputHtml + '</div>' +
+                '</div>' +
+                '</div>';
+        });
+        container.innerHTML = html;
     }
 
     function setupVerifyCode() {
@@ -722,7 +816,7 @@
     function setupTipPopup() {
         var tipPopup = document.getElementById('tipPopup');
         if (!tipPopup) {
-            return;
+            return false;
         }
 
         tipPopup.addEventListener('click', function (e) {
@@ -740,6 +834,8 @@
         } else {
             setTimeout(openTipPopup, 0);
         }
+
+        return true;
     }
 
     function closeTipPopup() {
@@ -747,10 +843,25 @@
         if (tipPopup) {
             tipPopup.style.display = 'none';
         }
-        if (typeof win.showProcessDrawer === 'function') {
+
+        var processDrawer = document.getElementById('processDrawer');
+        if (processDrawer && typeof win.showProcessDrawer === 'function') {
             setTimeout(function () {
                 win.showProcessDrawer();
             }, 120);
+        }
+    }
+
+    function setupInitialPopups() {
+        var hasTipPopup = setupTipPopup();
+        if (hasTipPopup) {
+            return;
+        }
+
+        if (document.getElementById('processDrawer') && typeof win.showProcessDrawer === 'function') {
+            setTimeout(function () {
+                win.showProcessDrawer();
+            }, 0);
         }
     }
 
@@ -779,11 +890,12 @@
     function initializeProductPage(layer, $) {
         currentLayer = layer;
         currentJquery = $;
+        renderCustomOrderFields();
         setupResubmit();
         syncOrderPhone();
         setupVerifyCode();
         bindOrderBarActions();
-        setupTipPopup();
+        setupInitialPopups();
         bindStaticEvents();
     }
 

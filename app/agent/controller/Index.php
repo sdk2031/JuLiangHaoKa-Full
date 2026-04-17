@@ -69,6 +69,7 @@ class Index extends Base
 
         // 获取代理商基本信息用于显示（关联密价等级表、分销等级）
         $distributionMode = strtolower(trim((string) SystemConfig::get('distribution_level_mode', 'legacy')));
+        $isFixedDistributionMode = ($distributionMode === 'fixed');
         $agent = Db::table('agents')
             ->alias('a')
             ->leftJoin('secret_price_levels spl', 'a.secret_price_level_id = spl.id')
@@ -112,9 +113,78 @@ class Index extends Base
         $workorderPluginEnabled = $pluginStatus['workorder'];
         $marketingPluginEnabled = $pluginStatus['marketing'];
         $downApiPluginEnabled = $pluginStatus['down_api'];
+        $agentCapability = \app\common\service\IdcardService::getAgentCapabilityState((int)$agentId);
+
+        // 店铺摘要信息（顶部导航店铺卡使用）
+        $shopInfo = Db::table('agent_shop')->where('agent_id', $agentId)->find();
+        if (!$shopInfo) {
+            $createResult = AgentService::createShop((int)$agentId);
+            if (!empty($createResult['code'])) {
+                $shopInfo = Db::table('agent_shop')->where('agent_id', $agentId)->find();
+            }
+        }
+        if ($shopInfo && empty($shopInfo['shop_code'])) {
+            $newShopCode = $this->generateUniqueShopCode();
+            Db::table('agent_shop')->where('id', $shopInfo['id'])->update([
+                'shop_code' => $newShopCode
+            ]);
+            $shopInfo['shop_code'] = $newShopCode;
+        }
+
+        $shopSummary = [
+            'shop_name' => $shopInfo['shop_name'] ?? '未设置',
+            'shop_code' => $shopInfo['shop_code'] ?? '',
+            'theme_color' => $shopInfo['theme_color'] ?? '#1890ff',
+            'status_text' => ((int)($shopInfo['status'] ?? 1) === 1) ? '正常' : '异常',
+            'shop_code_display' => $shopInfo['shop_code'] ?? '',
+            'agent_id' => (int)$agentId,
+            'today_visits' => (int)($shopInfo['today_visits'] ?? 0),
+            'today_orders' => 0,
+            'shop_url' => !empty($shopInfo['shop_code']) ? request()->domain() . '/index/shop/index/shop_code/' . $shopInfo['shop_code'] : ''
+        ];
+
+        if (!empty($shopSummary['shop_code'])) {
+            $todayStartStr = date('Y-m-d 00:00:00');
+            $todayEndStr = date('Y-m-d 23:59:59');
+            $shopSummary['today_orders'] = (int)Db::table('order')
+                ->where('agent_id', (string)$agentId)
+                ->where('create_time', '>=', $todayStartStr)
+                ->where('create_time', '<=', $todayEndStr)
+                ->count();
+        }
+
+        if (!empty($agentCapability['order_submit_required']) && empty($agentCapability['is_verified'])) {
+            $shopSummary['status_text'] = '异常';
+            $shopSummary['shop_code_display'] = '实名后可用';
+        } elseif (!empty($agentCapability['contract_pending_review'])) {
+            $shopSummary['status_text'] = '异常';
+            $shopSummary['shop_code_display'] = '审核后可用';
+        }
+
+        $upstreamContact = [
+            'is_root' => ((int)$agent['parent_id'] === 0),
+            'parent_name' => '平台客服',
+            'contact_phone' => '',
+            'service_qrcode' => ''
+        ];
+        if ((int)$agent['parent_id'] > 0) {
+            $parentAgent = Db::table('agents')->where('id', (int)$agent['parent_id'])->find();
+            if ($parentAgent) {
+                $parentShop = Db::table('agent_shop')->where('agent_id', (int)$parentAgent['id'])->find();
+                $upstreamContact = [
+                    'is_root' => false,
+                    'parent_name' => $parentAgent['username'] ?: '上游代理',
+                    'contact_phone' => $parentShop['contact_phone'] ?? '',
+                    'service_qrcode' => $parentShop['service_qrcode'] ?? ''
+                ];
+            }
+        }
 
         View::assign('agent', $agent);
         View::assign('config', $config);
+        View::assign('shopSummary', $shopSummary);
+        View::assign('upstreamContact', $upstreamContact);
+        View::assign('agentCapability', $agentCapability);
         View::assign('showAdminTab', $showAdminTab);
         View::assign('workorderPluginEnabled', $workorderPluginEnabled);
         View::assign('marketingPluginEnabled', $marketingPluginEnabled);
@@ -245,6 +315,7 @@ class Index extends Base
 
         // 获取dashboard数据
         $dashboardData = $this->getDashboardData($agentId);
+        $dashboardData['agent_capability'] = \app\common\service\IdcardService::getAgentCapabilityState((int)$agentId);
         
         View::assign('agent', $agent);
         View::assign('dashboardData', $dashboardData);
@@ -390,6 +461,10 @@ class Index extends Base
      */
     private function getDashboardData($agentId)
     {
+        $pluginStatus = $this->checkPluginsStatus(['workorder', 'marketing']);
+        $workorderPluginEnabled = !empty($pluginStatus['workorder']);
+        $marketingPluginEnabled = !empty($pluginStatus['marketing']);
+
         // 将agent_id转换为字符串，因为order表中agent_id是varchar类型
         $agentIdStr = (string)$agentId;
 
@@ -440,14 +515,132 @@ class Index extends Base
             ->where('create_time', '<=', $todayEndStr)
             ->sum('commission');
 
+        // 订单状态统计（当前代理）
+        $orderStatusRaw = Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->field('order_status, COUNT(*) as cnt')
+            ->group('order_status')
+            ->select()
+            ->toArray();
+
+        $orderStatusStats = [
+            0 => 0, // 已提交
+            1 => 0, // 待发货
+            2 => 0, // 已发货
+            3 => 0, // 待传照片
+            4 => 0, // 已激活
+            5 => 0, // 已结算
+            6 => 0, // 结算失败
+            7 => 0  // 审核失败
+        ];
+        foreach ($orderStatusRaw as $row) {
+            $status = (int)($row['order_status'] ?? -1);
+            if (array_key_exists($status, $orderStatusStats)) {
+                $orderStatusStats[$status] = (int)($row['cnt'] ?? 0);
+            }
+        }
+        $totalStatusOrders = array_sum($orderStatusStats);
+        $settledRatio = $totalStatusOrders > 0 ? round(($orderStatusStats[5] / $totalStatusOrders) * 100) : 0;
+
+        // 顶部概览数据
+        $estimatedCommissionTotal = (float)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->whereNotIn('order_status', [6, 7])
+            ->sum('commission');
+        $refundOrderCount = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->where(function ($query) {
+                $query->where('pay_status', 2)
+                    ->whereOr(function ($subQuery) {
+                        $subQuery->whereNotNull('refund_time')
+                            ->where('refund_time', '<>', '')
+                            ->where('refund_time', '<>', '0000-00-00 00:00:00');
+                    });
+            })
+            ->count();
+
+        $pendingPhotoCount = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->where('order_status', 3)
+            ->where('create_time', '>=', $last7DaysStr)
+            ->where('create_time', '<=', $todayEndStr)
+            ->count();
+
+        $pendingDeliveryCount = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->where('order_status', 1)
+            ->where('update_time', '>=', $last7DaysStr)
+            ->where('update_time', '<=', $todayEndStr)
+            ->count();
+
+        $pendingTicketCount = 0;
+        if ($workorderPluginEnabled) {
+            $pendingTicketCount = (int)Db::table('tickets')
+                ->where('agent_id', $agentId)
+                ->where('status', 2)
+                ->count();
+        }
+
+        $overviewReminders = [];
+        if ($pendingPhotoCount > 0) {
+            $overviewReminders[] = [
+                'title' => '待传照片',
+                'content' => '最近7天内有 ' . $pendingPhotoCount . ' 个订单待上传照片，请尽快提醒客户补齐资料。',
+                'url' => '/agent/order/index',
+                'link_text' => '去处理'
+            ];
+        }
+        if ($pendingDeliveryCount > 0) {
+            $overviewReminders[] = [
+                'title' => '待发货',
+                'content' => '最近7天内有 ' . $pendingDeliveryCount . ' 个订单仍处于待发货状态，请及时跟进。',
+                'url' => '/agent/order/index',
+                'link_text' => '去处理'
+            ];
+        }
+        if ($pendingTicketCount > 0) {
+            $overviewReminders[] = [
+                'title' => '工单提醒',
+                'content' => '您提交的工单，有 ' . $pendingTicketCount . ' 个工单客服已接手处理，请及时查看并回复。',
+                'url' => '/agent/ticket/index',
+                'link_text' => '去处理'
+            ];
+        }
+        if (empty($overviewReminders)) {
+            $overviewReminders[] = [
+                'title' => '状态正常',
+                'content' => '最近7天暂无待传照片、待发货订单' . ($workorderPluginEnabled ? '和待处理工单' : '') . '，当前业务状态正常。',
+                'url' => '',
+                'link_text' => '查看详情'
+            ];
+        }
+
         // 转化率（最近7天订单数/最近7天访问量）
         $conversionRate = $todayVisits > 0 ? round(($todayOrderCount / $todayVisits) * 100, 1) : 0;
 
-        // 3. 订单和激活数据 - 直接从agents表读取现成的统计字段（更高效）
-        $monthOrderCount = $agentInfo['month_orders'] ?? 0;      // 本月订单数
-        $monthActiveOrders = $agentInfo['month_jihuo'] ?? 0;     // 本月激活
-        $totalOrders = $agentInfo['total_orders'] ?? 0;          // 总订单数
-        $totalActivatedOrders = $agentInfo['total_jihuo'] ?? 0;  // 总激活
+        // 3. 订单和激活数据
+        // 顶部与首页统计优先使用 order 表实时数据，避免 agents 汇总字段未同步导致展示不准
+        $monthOrderCount = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->where('create_time', '>=', $monthStartStr)
+            ->where('create_time', '<=', $monthEndStr)
+            ->count();
+
+        $monthActiveOrders = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->where('order_status', 4)
+            ->where('jh_time', '>=', $monthStartStr)
+            ->where('jh_time', '<=', $monthEndStr)
+            ->count();
+
+        $totalOrders = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->count();
+
+        $totalActivatedOrders = (int)Db::table('order')
+            ->where('agent_id', $agentIdStr)
+            ->whereIn('order_status', [4, 5])
+            ->count();
 
         // 计算总激活率
         $activationRate = $totalOrders > 0 ? round(($totalActivatedOrders / $totalOrders) * 100, 2) : 0;
@@ -502,10 +695,19 @@ class Index extends Base
 
         // 6. 获取最新产品（产品上新模块）
         $latestProducts = Db::table('product')
-            ->where('status', 1) // 只获取启用的产品
-            ->order('create_time', 'desc') // 按创建时间降序
-            ->limit(8) // 获取最新8个产品
-            ->field('name,create_time')
+            ->where('status', 1)
+            ->order('create_time', 'desc')
+            ->limit(10)
+            ->field('id,name,create_time')
+            ->select();
+
+        $todayLatestProducts = Db::table('product')
+            ->where('status', 1)
+            ->where('create_time', '>=', $todayStartStr)
+            ->where('create_time', '<=', $todayEndStr)
+            ->order('create_time', 'desc')
+            ->limit(10)
+            ->field('id,name,create_time')
             ->select();
 
         // 7. 获取公告列表（按排序和创建时间）
@@ -521,41 +723,50 @@ class Index extends Base
             ->select();
 
         // 8. 获取活动列表
-        $activities = Db::table('activities')
-            ->where('status', 1) // 只获取启用的活动
-            ->order('sort_order', 'asc') // 按排序号升序
-            ->order('create_time', 'desc') // 再按创建时间降序
-            ->limit(5) // 获取最新5条活动
-            ->field('id,title,start_time,end_time,status,target_value,duration_type')
-            ->select();
+        $activities = [];
+        if ($marketingPluginEnabled) {
+            $activities = Db::table('activities')
+                ->where('status', 1)
+                ->order('sort_order', 'asc')
+                ->order('create_time', 'desc')
+                ->limit(5)
+                ->field('id,title,start_time,end_time,status,target_value,duration_type')
+                ->select();
+        }
 
         // 9. 获取最新工单列表（按最新回复时间排序）
-        $latestTickets = Db::table('tickets')
-            ->where('agent_id', $agentId)
-            ->order('reply_time', 'desc') // 按最新回复时间降序
-            ->order('create_time', 'desc') // 再按创建时间降序
-            ->limit(5) // 获取最新5条工单
-            ->field('id,title,category_id,status,create_time,reply_time')
-            ->select();
+        $latestTickets = [];
+        if ($workorderPluginEnabled) {
+            $latestTickets = Db::table('tickets')
+                ->where('agent_id', $agentId)
+                ->order('reply_time', 'desc')
+                ->order('create_time', 'desc')
+                ->limit(5)
+                ->field('id,title,category_id,status,create_time,reply_time')
+                ->select();
+        }
 
         // 格式化产品数据
-        $formattedProducts = [];
-        foreach ($latestProducts as $index => $product) {
-            $isActive = $index % 2 === 0; // 第0、2、4...个（即第1、3、5...个）激活
-            // 限制产品名称长度，避免布局问题
-            $productName = $product['name'];
-            if (mb_strlen($productName) > 20) {
-                $productName = mb_substr($productName, 0, 20) . '...';
+        $formatTimelineProducts = function ($products) {
+            $result = [];
+            foreach ($products as $product) {
+                $createTime = strtotime((string)($product['create_time'] ?? ''));
+                if ($createTime <= 0) {
+                    $createTime = time();
+                }
+
+                $result[] = [
+                    'id' => (int)($product['id'] ?? 0),
+                    'name' => (string)($product['name'] ?? ''),
+                    'time' => date('Y-m-d', $createTime),
+                    'timestamp' => $createTime
+                ];
             }
-            
-            $formattedProducts[] = [
-                'name' => $productName,
-                'time' => date('H:i', strtotime($product['create_time'])),
-                'date' => date('m-d', strtotime($product['create_time'])),
-                'is_active' => $isActive,
-                'icon_class' => $isActive ? 'layui-icon layui-timeline-axis active' : 'layui-icon layui-timeline-axis'
-            ];
-        }
+            return $result;
+        };
+
+        $formattedProducts = $formatTimelineProducts($latestProducts);
+        $formattedTodayProducts = $formatTimelineProducts($todayLatestProducts);
 
         // 格式化公告数据
         $formattedAnnouncements = [];
@@ -671,6 +882,14 @@ class Index extends Base
         $shopName = $shopInfo ? $shopInfo['shop_name'] : '未设置';
         $shopCode = $shopInfo ? $shopInfo['shop_code'] : '';
         $shopUrl = $shopCode ? request()->domain() . '/index/shop/index/shop_code/' . $shopCode : '';
+        $shopTotalOrders = (int)($shopInfo['total_orders'] ?? 0);
+        $shopMonthVisits = (int)($shopInfo['month_visits'] ?? 0);
+        $shopMonthOrders = (int)($shopInfo['month_orders'] ?? 0);
+        $shopTodayOrders = (int)($shopInfo['today_orders'] ?? 0);
+        $verifiedAgents = (int)Db::table('agents')->where('parent_id', $agentId)->where('is_verified', 1)->count();
+        $unverifiedAgents = max(0, (int)$totalAgents - $verifiedAgents);
+        $shopTrendDatasets = $this->buildAgentTrendDatasets((int)$agentId);
+        $shopMetricSets = $this->buildAgentMetricSets((int)$agentId, $shopInfo);
 
         // 获取上级代理信息（agentInfo已在函数开头获取）
         $parentAgentInfo = '平台直属';
@@ -709,7 +928,7 @@ class Index extends Base
             // 已结算佣金（本月）/ 总已结算佣金（全部）
             'month_settled_commission' => '¥' . number_format($monthSettledCommission, 2),
             'total_settled_commission' => '¥' . number_format($totalSettledCommission, 2),
-            
+
             // 新增代理商（本月）/ 总代理商（全部）
             'month_new_agents' => $monthNewAgents,
             'total_agents' => number_format($totalAgents),
@@ -718,15 +937,64 @@ class Index extends Base
             'today_visits' => number_format($todayVisits ?: 0), // 今日访问量
             'total_visits' => number_format($totalVisits ?: 0), // 总访问量
             'today_orders' => number_format($todayOrderCount ?: 0), // 今日订单量
+            'month_visits' => number_format($shopMonthVisits),
+            'month_shop_orders' => number_format($shopMonthOrders),
+            'shop_total_orders' => number_format($shopTotalOrders),
+            'verified_agents' => number_format($verifiedAgents),
+            'unverified_agents' => number_format($unverifiedAgents),
             'shop_name' => $shopName,
             'shop_code' => $shopCode,
             'shop_url' => $shopUrl,
             'parent_agent_name' => $parentAgentInfo,
             'parent_contact_phone' => $parentContactPhone,
             'parent_service_qrcode' => $parentServiceQrcode,
+
+            'shop_metric_sets' => $shopMetricSets,
+            'shop_trend_datasets' => $shopTrendDatasets,
+            
+            // 订单状态统计
+            'order_status_stats' => [
+                'submitted' => $orderStatusStats[0],
+                'pending_delivery' => $orderStatusStats[1],
+                'shipped' => $orderStatusStats[2],
+                'pending_photo' => $orderStatusStats[3],
+                'activated' => $orderStatusStats[4],
+                'settled' => $orderStatusStats[5],
+                'settlement_failed' => $orderStatusStats[6],
+                'audit_failed' => $orderStatusStats[7],
+                'total' => $totalStatusOrders,
+                'settled_ratio' => $settledRatio
+            ],
+
+            'overview_stats' => [
+                [
+                    'label' => '历史总佣金',
+                    'value' => '¥' . number_format((float)($agentInfo['total_money'] ?? 0), 2)
+                ],
+                [
+                    'label' => '店铺访问量',
+                    'value' => number_format((int)$totalVisits)
+                ],
+                [
+                    'label' => '总订单',
+                    'value' => number_format((int)$totalOrders)
+                ],
+                [
+                    'label' => '发展代理数',
+                    'value' => number_format((int)$totalAgents)
+                ],
+                [
+                    'label' => '当前余额',
+                    'value' => '¥' . number_format((float)($agentInfo['balance'] ?? 0), 2)
+                ]
+            ],
+            'overview_reminders' => $overviewReminders,
             
             // 最新产品数据
-            'latest_products' => $formattedProducts,
+            'latest_products' => [
+                'recent' => $formattedProducts,
+                'today' => $formattedTodayProducts
+            ],
             
             // 公告列表数据
             'announcements' => $formattedAnnouncements,
@@ -735,7 +1003,9 @@ class Index extends Base
             'activities' => $formattedActivities,
             
             // 最新工单数据
-            'latest_tickets' => $formattedTickets
+            'latest_tickets' => $formattedTickets,
+            'workorder_plugin_enabled' => $workorderPluginEnabled ? 1 : 0,
+            'marketing_plugin_enabled' => $marketingPluginEnabled ? 1 : 0
         ];
     }
 
@@ -748,6 +1018,241 @@ class Index extends Base
             return round($number / 10000, 1) . ' 万';
         }
         return number_format($number);
+    }
+
+    /**
+     * 构建店铺趋势数据集
+     */
+    private function buildAgentTrendDatasets(int $agentId): array
+    {
+        $datasets = [];
+        foreach ([7, 30] as $rangeDays) {
+            $datasets[$rangeDays . '_day'] = $this->buildAgentTrendDataset($agentId, $rangeDays, 'day');
+        }
+        return $datasets;
+    }
+
+    private function buildAgentMetricSets(int $agentId, ?array $shopInfo): array
+    {
+        $sets = [];
+        $shopId = (int)($shopInfo['id'] ?? 0);
+
+        foreach ([7, 30] as $rangeDays) {
+            $start = new \DateTimeImmutable(date('Y-m-d 00:00:00', strtotime('-' . ($rangeDays - 1) . ' days')));
+            $end = new \DateTimeImmutable(date('Y-m-d 23:59:59'));
+            $startStr = $start->format('Y-m-d H:i:s');
+            $endStr = $end->format('Y-m-d H:i:s');
+            $startMs = $start->getTimestamp() * 1000;
+            $endMs = $end->getTimestamp() * 1000;
+
+            $visitCount = 0;
+            if ($shopId > 0) {
+                $visitCount = (int)Db::table('agent_shop_visits')
+                    ->where('shop_id', $shopId)
+                    ->where('visit_date', '>=', $start->format('Y-m-d'))
+                    ->where('visit_date', '<=', $end->format('Y-m-d'))
+                    ->count();
+            }
+
+            $orderCount = (int)Db::table('order')
+                ->where('agent_id', (string)$agentId)
+                ->where('create_time', '>=', $startStr)
+                ->where('create_time', '<=', $endStr)
+                ->count();
+
+            $activatedCount = (int)Db::table('order')
+                ->where('agent_id', (string)$agentId)
+                ->where('order_status', 4)
+                ->where('jh_time', '>=', $startStr)
+                ->where('jh_time', '<=', $endStr)
+                ->count();
+
+            $settledCount = (int)Db::table('order')
+                ->where('agent_id', (string)$agentId)
+                ->where('order_status', 5)
+                ->where('js_time', '>=', $startStr)
+                ->where('js_time', '<=', $endStr)
+                ->count();
+
+            $newAgentCount = (int)Db::table('agents')
+                ->where('parent_id', $agentId)
+                ->where('create_time', '>=', $startMs)
+                ->where('create_time', '<=', $endMs)
+                ->count();
+
+            $verifiedAgentCount = (int)Db::table('agents')
+                ->where('parent_id', $agentId)
+                ->where('is_verified', 1)
+                ->where('verify_time', '>=', $startMs)
+                ->where('verify_time', '<=', $endMs)
+                ->count();
+
+            $sets[(string)$rangeDays] = [
+                [
+                    'label' => '店铺访问量',
+                    'value' => number_format($visitCount),
+                    'extra' => '近' . $rangeDays . '天访客'
+                ],
+                [
+                    'label' => '订单量',
+                    'value' => number_format($orderCount),
+                    'extra' => '近' . $rangeDays . '天订单'
+                ],
+                [
+                    'label' => '已激活订单',
+                    'value' => number_format($activatedCount),
+                    'extra' => '近' . $rangeDays . '天激活'
+                ],
+                [
+                    'label' => '已结算订单',
+                    'value' => number_format($settledCount),
+                    'extra' => '近' . $rangeDays . '天结算'
+                ],
+                [
+                    'label' => '新增代理数',
+                    'value' => number_format($newAgentCount),
+                    'extra' => '近' . $rangeDays . '天新增'
+                ],
+                [
+                    'label' => '实名代理数',
+                    'value' => number_format($verifiedAgentCount),
+                    'extra' => '近' . $rangeDays . '天实名'
+                ]
+            ];
+        }
+
+        return $sets;
+    }
+
+    private function buildAgentTrendDataset(int $agentId, int $rangeDays, string $unit): array
+    {
+        $start = new \DateTimeImmutable(date('Y-m-d 00:00:00', strtotime('-' . ($rangeDays - 1) . ' days')));
+        $end = new \DateTimeImmutable(date('Y-m-d 23:59:59'));
+        $buckets = $this->buildTrendBuckets($start, $end, $unit);
+
+        $orders = Db::table('order')
+            ->where('agent_id', (string)$agentId)
+            ->where('create_time', '>=', $start->format('Y-m-d H:i:s'))
+            ->where('create_time', '<=', $end->format('Y-m-d H:i:s'))
+            ->field('create_time')
+            ->select()
+            ->toArray();
+
+        foreach ($orders as $order) {
+            $timestamp = strtotime((string)($order['create_time'] ?? ''));
+            if ($timestamp > 0) {
+                $this->appendTrendCount($buckets, $timestamp, 'orders');
+            }
+        }
+
+        $agents = Db::table('agents')
+            ->where('parent_id', $agentId)
+            ->where('create_time', '>=', $start->getTimestamp() * 1000)
+            ->where('create_time', '<=', $end->getTimestamp() * 1000)
+            ->field('create_time')
+            ->select()
+            ->toArray();
+
+        foreach ($agents as $agent) {
+            $timestamp = (int)floor(((int)($agent['create_time'] ?? 0)) / 1000);
+            if ($timestamp > 0) {
+                $this->appendTrendCount($buckets, $timestamp, 'agents');
+            }
+        }
+
+        $labels = [];
+        $orderCounts = [];
+        $agentCounts = [];
+        foreach ($buckets as $bucket) {
+            $labels[] = $bucket['label'];
+            $orderCounts[] = $bucket['orders'];
+            $agentCounts[] = $bucket['agents'];
+        }
+
+        return [
+            'range_days' => $rangeDays,
+            'unit' => $unit,
+            'labels' => $labels,
+            'orders' => $orderCounts,
+            'agents' => $agentCounts,
+            'title' => $this->getTrendTitle($rangeDays, $unit)
+        ];
+    }
+
+    private function getTrendTitle(int $rangeDays, string $unit): string
+    {
+        return '近' . $rangeDays . '天趋势';
+    }
+
+    private function buildTrendBuckets(\DateTimeImmutable $start, \DateTimeImmutable $end, string $unit): array
+    {
+        $buckets = [];
+
+        if ($unit === 'week') {
+            $cursor = $start;
+            while ($cursor <= $end) {
+                $bucketStart = $cursor;
+                $bucketEnd = $cursor->modify('+6 days')->setTime(23, 59, 59);
+                if ($bucketEnd > $end) {
+                    $bucketEnd = $end;
+                }
+                $buckets[] = [
+                    'start' => $bucketStart->getTimestamp(),
+                    'end' => $bucketEnd->getTimestamp(),
+                    'label' => $bucketStart->format('m/d') . '-' . $bucketEnd->format('m/d'),
+                    'orders' => 0,
+                    'agents' => 0
+                ];
+                $cursor = $bucketEnd->modify('+1 second');
+            }
+            return $buckets;
+        }
+
+        if ($unit === 'month') {
+            $cursor = $start->modify('first day of this month')->setTime(0, 0, 0);
+            while ($cursor <= $end) {
+                $bucketStart = $cursor < $start ? $start : $cursor;
+                $bucketEnd = $cursor->modify('last day of this month')->setTime(23, 59, 59);
+                if ($bucketEnd > $end) {
+                    $bucketEnd = $end;
+                }
+                $buckets[] = [
+                    'start' => $bucketStart->getTimestamp(),
+                    'end' => $bucketEnd->getTimestamp(),
+                    'label' => $bucketStart->format('Y-m'),
+                    'orders' => 0,
+                    'agents' => 0
+                ];
+                $cursor = $cursor->modify('first day of next month')->setTime(0, 0, 0);
+            }
+            return $buckets;
+        }
+
+        $cursor = $start;
+        while ($cursor <= $end) {
+            $bucketStart = $cursor;
+            $bucketEnd = $cursor->setTime(23, 59, 59);
+            $buckets[] = [
+                'start' => $bucketStart->getTimestamp(),
+                'end' => $bucketEnd->getTimestamp(),
+                'label' => $bucketStart->format('m/d'),
+                'orders' => 0,
+                'agents' => 0
+            ];
+            $cursor = $cursor->modify('+1 day');
+        }
+        return $buckets;
+    }
+
+    private function appendTrendCount(array &$buckets, int $timestamp, string $field): void
+    {
+        foreach ($buckets as &$bucket) {
+            if ($timestamp >= $bucket['start'] && $timestamp <= $bucket['end']) {
+                $bucket[$field] = (int)$bucket[$field] + 1;
+                break;
+            }
+        }
+        unset($bucket);
     }
 
     /**

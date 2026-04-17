@@ -3,9 +3,29 @@
     var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var forbiddenWords = ['快递', '驿站', '公司', '学校', '小学', '中学', '大学', '酒店', '商业楼'];
 
+    function formatMessageHtml(text) {
+        var content = String(text == null ? '' : text);
+        return content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\n/g, '<br>');
+    }
+
     function msg(layer, text, options) {
-        if (layer && typeof layer.msg === 'function') {
-            layer.msg(text, options || {});
+        if (!layer) {
+            return;
+        }
+        var rawText = String(text == null ? '' : text);
+        if (rawText.indexOf('\n') !== -1 && typeof layer.msg === 'function') {
+            layer.msg('<div style="white-space:normal;line-height:1.8;">' + formatMessageHtml(rawText) + '</div>', options || {});
+            return;
+        }
+
+        if (typeof layer.msg === 'function') {
+            layer.msg(rawText, options || {});
         }
     }
 
@@ -147,12 +167,12 @@
         }
 
         if (ageRule.min !== null && actualAge < ageRule.min) {
-            msg(layer, '当前商品要求下单年龄' + ageRuleText + '，您身份证识别年龄为' + actualAge + '岁');
+            msg(layer, '提交失败：年龄不符合\n产品要求下单年龄' + ageRuleText);
             return false;
         }
 
         if (ageRule.max !== null && actualAge > ageRule.max) {
-            msg(layer, '当前商品要求下单年龄' + ageRuleText + '，您身份证识别年龄为' + actualAge + '岁');
+            msg(layer, '提交失败：年龄不符合\n产品要求下单年龄' + ageRuleText);
             return false;
         }
 
@@ -235,6 +255,30 @@
                 return false;
             }
         }
+
+        try {
+            var customConfig = JSON.parse(String(win.PRODUCT_CUSTOM_FIELDS || '').trim() || '[]');
+            if (Array.isArray(customConfig)) {
+                for (var j = 0; j < customConfig.length; j += 1) {
+                    var item = customConfig[j] || {};
+                    var fieldName = String(item.name || '').trim();
+                    var fieldLabel = String(item.label || fieldName || '').trim();
+                    var required = String(item.required || item.required === 0 ? item.required : '0') === '1';
+                    if (!fieldName || !required) {
+                        continue;
+                    }
+                    var fieldValue = formData.get('custom_order_fields');
+                    var fieldMap = {};
+                    try {
+                        fieldMap = JSON.parse(String(fieldValue || '{}'));
+                    } catch (e) {}
+                    if (!String((fieldMap[fieldName] || '')).trim()) {
+                        msg(layer, '请输入' + fieldLabel);
+                        return false;
+                    }
+                }
+            }
+        } catch (e) {}
 
         return validateRequiredPhotos(layer);
     }
