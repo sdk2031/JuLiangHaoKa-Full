@@ -323,6 +323,46 @@ CREATE TABLE `agent_idcard_logs`  (
 -- ----------------------------
 -- Records of agent_idcard_logs
 -- ----------------------------
+DROP TABLE IF EXISTS `agent_employee_profile`;
+CREATE TABLE `agent_employee_profile` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `agent_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '代理ID',
+  `employee_code` varchar(32) NOT NULL DEFAULT '' COMMENT '员工号',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态:1启用,0停用',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `create_time` int(11) unsigned NOT NULL DEFAULT '0',
+  `update_time` int(11) unsigned NOT NULL DEFAULT '0',
+  `update_admin_id` int(11) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_agent_id` (`agent_id`),
+  UNIQUE KEY `uk_employee_code` (`employee_code`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工代理档案';
+
+
+DROP TABLE IF EXISTS `employee_salary_settlement_logs`;
+CREATE TABLE `employee_salary_settlement_logs` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '员工组ID',
+  `group_name` varchar(100) NOT NULL DEFAULT '' COMMENT '员工组名称快照',
+  `agent_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '代理ID',
+  `agent_username` varchar(100) NOT NULL DEFAULT '' COMMENT '代理账号快照',
+  `employee_code` varchar(32) NOT NULL DEFAULT '' COMMENT '员工号快照',
+  `settlement_month` varchar(7) NOT NULL DEFAULT '' COMMENT '结算月份 YYYY-MM',
+  `settled_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '本次结算金额',
+  `balance_before` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '扣减前余额',
+  `balance_after` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '扣减后余额',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态:1成功',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `operator_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '操作员ID',
+  `operator_name` varchar(100) NOT NULL DEFAULT '' COMMENT '操作员名称',
+  `create_time` int(11) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_group_month` (`group_id`,`settlement_month`),
+  KEY `idx_agent_month` (`agent_id`,`settlement_month`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工线下结算日志';
+
 
 -- ----------------------------
 -- Table structure for agent_migrate_logs
