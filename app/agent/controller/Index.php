@@ -4,6 +4,7 @@ namespace app\agent\controller;
 use app\common\helper\SystemConfig;
 use app\common\service\AgentService;
 use app\common\service\AgentDomainBrandService;
+use app\common\service\EmployeeAgentService;
 use think\facade\Db;
 use think\facade\View;
 use think\facade\Session;
@@ -102,6 +103,12 @@ class Index extends Base
             }
         }
 
+        $employeeAgentService = new EmployeeAgentService();
+        $employeeContext = $employeeAgentService->getEmployeeContext((int)$agentId);
+        $agent['is_employee'] = !empty($employeeContext['is_employee']) ? 1 : 0;
+        $agent['employee_code'] = $employeeContext['employee_code'] ?? '';
+        $agent['employee_group_name'] = $employeeContext['group_name'] ?? '';
+
         // 安全检查：验证是否通过管理员切换过来的
         $showAdminTab = $this->verifyAdminSwitch();
 
@@ -159,6 +166,9 @@ class Index extends Base
         } elseif (!empty($agentCapability['contract_pending_review'])) {
             $shopSummary['status_text'] = '异常';
             $shopSummary['shop_code_display'] = '审核后可用';
+        } elseif (!empty($agentCapability['contract_pending_payment'])) {
+            $shopSummary['status_text'] = '异常';
+            $shopSummary['shop_code_display'] = '签约后可用';
         }
 
         $upstreamContact = [
@@ -316,6 +326,10 @@ class Index extends Base
         // 获取dashboard数据
         $dashboardData = $this->getDashboardData($agentId);
         $dashboardData['agent_capability'] = \app\common\service\IdcardService::getAgentCapabilityState((int)$agentId);
+        $employeeContext = (new EmployeeAgentService())->getEmployeeContext((int)$agentId);
+        $agent['is_employee'] = !empty($employeeContext['is_employee']) ? 1 : 0;
+        $agent['employee_code'] = $employeeContext['employee_code'] ?? '';
+        $agent['employee_group_name'] = $employeeContext['group_name'] ?? '';
         
         View::assign('agent', $agent);
         View::assign('dashboardData', $dashboardData);
@@ -464,6 +478,9 @@ class Index extends Base
         $pluginStatus = $this->checkPluginsStatus(['workorder', 'marketing']);
         $workorderPluginEnabled = !empty($pluginStatus['workorder']);
         $marketingPluginEnabled = !empty($pluginStatus['marketing']);
+        $employeeAgentService = new EmployeeAgentService();
+        $employeeContext = $employeeAgentService->getEmployeeContext((int)$agentId);
+        $employeeTeamStats = !empty($employeeContext['is_employee']) ? $employeeAgentService->getTeamStats((int)$agentId) : [];
 
         // 将agent_id转换为字符串，因为order表中agent_id是varchar类型
         $agentIdStr = (string)$agentId;
@@ -910,7 +927,7 @@ class Index extends Base
         }
 
         // 准备数据
-        return [
+        $dashboard = [
             // 订单量（本月）/ 总订单量（全部）- 从agents表读取
             'month_orders' => number_format($monthOrderCount),
             'total_orders' => $this->formatNumber($totalOrders),
@@ -1005,8 +1022,37 @@ class Index extends Base
             // 最新工单数据
             'latest_tickets' => $formattedTickets,
             'workorder_plugin_enabled' => $workorderPluginEnabled ? 1 : 0,
-            'marketing_plugin_enabled' => $marketingPluginEnabled ? 1 : 0
+            'marketing_plugin_enabled' => $marketingPluginEnabled ? 1 : 0,
+            'employee_context' => $employeeContext,
+            'employee_team_stats' => $employeeTeamStats,
         ];
+
+        if (!empty($employeeContext['is_employee'])) {
+            $dashboard['overview_stats'] = [
+                [
+                    'label' => '员工号',
+                    'value' => (string)($employeeContext['employee_code'] ?: '-')
+                ],
+                [
+                    'label' => '本月团队订单',
+                    'value' => number_format((int)($employeeTeamStats['month']['total_orders'] ?? 0))
+                ],
+                [
+                    'label' => '全年团队订单',
+                    'value' => number_format((int)($employeeTeamStats['year']['total_orders'] ?? 0))
+                ],
+                [
+                    'label' => '本月待结算',
+                    'value' => '¥' . number_format((float)($employeeTeamStats['month']['payable_amount'] ?? 0), 2)
+                ],
+                [
+                    'label' => '当前余额',
+                    'value' => '¥' . number_format((float)($agentInfo['balance'] ?? 0), 2)
+                ]
+            ];
+        }
+
+        return $dashboard;
     }
 
     /**

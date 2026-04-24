@@ -54,10 +54,11 @@ return array(
                     array('id' => 'employee_group_delete_btn', 'name' => '删除分组', 'type' => 2, 'permission' => 'employee:group:delete', 'visible' => false, 'sort' => 3),
                     array('id' => 'employee_member_add_btn', 'name' => '添加成员', 'type' => 2, 'permission' => 'employee:member:add', 'visible' => false, 'sort' => 4),
                     array('id' => 'employee_member_remove_btn', 'name' => '移除成员', 'type' => 2, 'permission' => 'employee:member:remove', 'visible' => false, 'sort' => 5),
-                    array('id' => 'employee_salary_payout_btn', 'name' => '工资发放', 'type' => 2, 'permission' => 'employee:salary:payout', 'visible' => false, 'sort' => 6),
-                    array('id' => 'employee_payout_logs_btn', 'name' => '发放记录', 'type' => 2, 'permission' => 'employee:logs:view', 'visible' => false, 'sort' => 7),
-                    array('id' => 'employee_detail_btn', 'name' => '员工详情', 'type' => 2, 'permission' => 'employee:detail:view', 'visible' => false, 'sort' => 8),
-                ),
+                    array('id' => 'employee_member_edit_btn', 'name' => '编辑成员', 'type' => 2, 'permission' => 'employee:member:edit', 'visible' => false, 'sort' => 6),
+                    array('id' => 'employee_salary_payout_btn', 'name' => '工资发放', 'type' => 2, 'permission' => 'employee:salary:payout', 'visible' => false, 'sort' => 7),
+                    array('id' => 'employee_payout_logs_btn', 'name' => '发放记录', 'type' => 2, 'permission' => 'employee:logs:view', 'visible' => false, 'sort' => 8),
+                    array('id' => 'employee_detail_btn', 'name' => '员工详情', 'type' => 2, 'permission' => 'employee:detail:view', 'visible' => false, 'sort' => 9),
+                  ),
             ),
         ),
     ),
@@ -187,11 +188,12 @@ return array(
                 'permission' => 'agent:list',
                 'type' => 1,
                 'sort' => 1,
-                'children' => array(
-                    array('id' => 'agent_edit_btn', 'name' => '编辑代理', 'type' => 2, 'permission' => 'agent:edit', 'visible' => false, 'sort' => 1),
-                ),
+                  'children' => array(
+                    array('id' => 'agent_import_btn', 'name' => '批量导入代理', 'type' => 2, 'permission' => 'agent:import', 'visible' => false, 'sort' => 1),
+                    array('id' => 'agent_edit_btn', 'name' => '编辑代理', 'type' => 2, 'permission' => 'agent:edit', 'visible' => false, 'sort' => 2),
+                  ),
             ),
-                array(
+            array(
                 'id' => 'distribution_level',
                 'name' => '分销等级',
                 'route' => '/admin/distributionlevel/index',
@@ -199,6 +201,15 @@ return array(
                 'feature' => 'fixed_distribution',
                 'type' => 1,
                 'sort' => 3,
+            ),
+            array(
+                'id' => 'invite_code_reserved',
+                'name' => '靓号邀请码',
+                'route' => '/admin/invitecodereserved/index',
+                'permission' => 'agent:invite_reserved',
+                'feature' => 'fixed_distribution',
+                'type' => 1,
+                'sort' => 4,
             ),
             array(
                 'id' => 'secret_price',

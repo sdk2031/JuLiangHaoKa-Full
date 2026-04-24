@@ -22,6 +22,13 @@ require_once app()->getRootPath() . 'public/phpqrcode/qrlib.php';
 
 class Shop
 {
+    private function applyPageNoCacheHeaders(): void
+    {
+        header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    }
+
     private function mapIndexTemplateToSet(string $indexTemplate): string
     {
         $mapping = [
@@ -211,6 +218,8 @@ class Shop
      */
     public function index($shop_code = '')
     {
+        $this->applyPageNoCacheHeaders();
+
         // 显式读取 GET 参数，避免参数名在某些场景被框架解析链覆盖
         $template = request()->get('__tpl', request()->get('template', request()->get('tpl', input('param.template', input('template', 'default')))));
         if (empty($shop_code)) {
@@ -286,6 +295,8 @@ class Shop
      */
     public function product()
     {
+        $this->applyPageNoCacheHeaders();
+
         $shop_code = input('shop_code', '');
         $product_id = input('product_id', 0);
         // 显式读取 GET 参数，避免参数名在某些场景被框架解析链覆盖
