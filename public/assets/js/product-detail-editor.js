@@ -1,9 +1,34 @@
 (function () {
+    function getHostWindow() {
+        try {
+            if (window.parent && window.parent !== window && ((window.parent.layui && window.parent.layui.layer) || window.parent.layer)) {
+                return window.parent;
+            }
+        } catch (e) {}
+        return window;
+    }
+
+    function getHostDocument() {
+        return getHostWindow().document || document;
+    }
+
     function ensureStyles() {
-        if (document.getElementById('product-detail-editor-style')) return;
-        var style = document.createElement('style');
+        var hostDocument = getHostDocument();
+        if (!hostDocument.getElementById('ew-css-cascader') && window.layui && layui.cache && layui.cache.base) {
+            var cascaderLink = hostDocument.createElement('link');
+            cascaderLink.id = 'ew-css-cascader';
+            cascaderLink.rel = 'stylesheet';
+            cascaderLink.href = layui.cache.base + 'cascader/cascader.css';
+            hostDocument.head.appendChild(cascaderLink);
+        }
+        if (hostDocument.getElementById('product-detail-editor-style')) return;
+        var style = hostDocument.createElement('style');
         style.id = 'product-detail-editor-style';
         style.textContent =
+            '.layer-drawer-right{position:fixed!important;top:0!important;right:0!important;bottom:0!important;height:100vh!important;max-height:100vh!important;transform:translateX(100%)!important;border-radius:0!important;box-shadow:-2px 0 8px rgba(0,0,0,.15)!important;}' +
+            '.layer-drawer-right.layer-drawer-show{transform:translateX(0)!important;transition:transform .3s ease-out!important;}' +
+            '.layer-drawer-right .layui-layer-title{height:42px;line-height:42px;}' +
+            '.layer-drawer-right .layui-layer-content{height:calc(100vh - 42px)!important;max-height:calc(100vh - 42px)!important;overflow-y:auto;overflow-x:hidden;}' +
             '.product-detail-drawer{padding:20px;background:#fff;}' +
             '.product-detail-tip{margin-bottom:16px;padding:10px 14px;border:1px solid #d9ecff;border-radius:6px;background:#f8fbff;color:#4b5b76;font-size:13px;}' +
             '.product-detail-tabs{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}' +
@@ -59,10 +84,16 @@
             '.product-detail-value .layui-cascader,.product-detail-value .layui-form-select,.product-detail-value .layui-unselect{width:100%;height:auto !important;min-height:0 !important;border:0 !important;background:transparent !important;box-shadow:none !important;margin:0 !important;}' +
             '.product-detail-value .layui-cascader .layui-input,.product-detail-value .layui-form-select .layui-input,.product-detail-value .layui-unselect{border:0 !important;background:transparent !important;padding:0 !important;height:auto !important;min-height:0 !important;line-height:1.7 !important;box-shadow:none !important;margin:0 !important;}' +
             '.product-detail-value .layui-cascader .layui-edge,.product-detail-value .layui-form-select .layui-edge{right:0;}' +
+            '.product-detail-channel-select{width:100%;height:28px;border:0!important;border-color:transparent!important;background-color:transparent!important;background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\'%3E%3Cpath fill=\'%23333\' d=\'M1.41.59 6 5.17 10.59.59 12 2l-6 6-6-6z\'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;background-size:10px 7px;color:#333;font-size:14px;line-height:1.7;outline:none;box-shadow:none!important;padding:0 24px 0 0;margin:0;appearance:none!important;-webkit-appearance:none!important;-moz-appearance:none!important;}' +
+            '.product-detail-channel-select:focus{border:0!important;outline:none;box-shadow:none!important;background:transparent!important;}' +
             '.product-detail-tag-editor{position:relative;min-height:28px;}' +
             '.product-detail-tag-preview{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px;cursor:text;}' +
             '.product-detail-tag-chip{display:inline-block;padding:2px 6px;border-radius:3px;font-size:12px;line-height:18px;}' +
             '.product-detail-tag-input{display:none;}' +
+            '.product-detail-group-editor{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:28px;}' +
+            '.product-detail-group-option{display:inline-flex;align-items:center;gap:5px;color:#333;font-size:13px;line-height:22px;cursor:pointer;user-select:none;}' +
+            '.product-detail-group-option input{margin:0;accent-color:#1890ff;}' +
+            '.product-detail-group-note{flex:0 0 100%;color:#8c8c8c;font-size:12px;line-height:1.6;}' +
             '.product-detail-inline-tags{display:flex;flex-wrap:wrap;gap:6px;}.product-detail-inline-tag{display:inline-block;padding:2px 8px;border-radius:12px;background:#e6f7ff;color:#1890ff;font-size:12px;line-height:18px;}' +
             '.product-detail-status{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;line-height:18px;color:#fff;}' +
             '.product-detail-status.success{background:#52c41a;}.product-detail-status.warning{background:#fa8c16;}.product-detail-status.primary{background:#1890ff;}.product-detail-status.gray{background:#bfbfbf;}' +
@@ -108,7 +139,7 @@
             '.product-custom-field-add{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border:1px dashed #91caff;border-radius:8px;background:#f0f8ff;color:#1677ff;font-size:13px;cursor:pointer;}' +
             '.product-custom-field-save-btn{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border:1px solid #b7eb8f;border-radius:8px;background:#f6ffed;color:#52c41a;font-size:13px;cursor:pointer;}' +
             '.product-custom-field-help{font-size:12px;color:#8c8c8c;line-height:1.8;}';
-        document.head.appendChild(style);
+        hostDocument.head.appendChild(style);
     }
 
     var state = null;
@@ -133,6 +164,7 @@
         age: {label: '适用年龄', editor: 'text'},
         heyue: {label: '合约期', editor: 'text'},
         tags: {label: '产品标签', editor: 'text'},
+        visible_group_ids: {label: '显示分组', editor: 'groups'},
         status: {label: '上下架', editor: 'select', options: [['1', '上架'], ['0', '下架']]},
         is_open: {label: '开放API', editor: 'select', options: [['1', '开启'], ['0', '关闭']]},
         selectNumber: {label: '选号', editor: 'select', options: [['1', '支持'], ['0', '不支持']]},
@@ -157,7 +189,7 @@
         mark: {label: '备注信息', editor: 'textarea'},
         policy_order_security_check: {label: '安全校验', editor: 'select', options: [['', '跟随系统'], ['0', '关闭'], ['1', '开启']]},
         policy_shop_order_verify: {label: '下单验证', editor: 'select', options: [['', '跟随系统'], ['none', '关闭'], ['sms', '短信验证码'], ['image', '图形验证码']]},
-        policy_shop_order_idcard_verify: {label: '下单二要素', editor: 'select', options: [['', '跟随系统'], ['0', '关闭'], ['1', '开启']]},
+        policy_shop_order_idcard_verify: {label: '下单要素校验', editor: 'select', options: [['', '跟随系统'], ['none', '关闭'], ['two', '二要素'], ['three', '三要素']]},
         policy_product_ship_sms_notice: {label: '短信通知-发货', editor: 'select', options: [['', '跟随系统'], ['0', '关闭'], ['1', '开启']]},
         policy_order_review_failed_sms_notice: {label: '短信通知-审核失败', editor: 'select', options: [['', '跟随系统'], ['0', '关闭'], ['1', '开启']]},
         product_popup: {label: '产品弹窗', editor: 'textarea'},
@@ -165,7 +197,7 @@
         order_process: {label: '下单流程', editor: 'textarea'}
     };
     var basicSections = [
-        {title: '基本信息', rows: [['name', 'yys'], ['api_name', 'number'], ['status', 'guishudi'], ['yuezu', 'flow'], ['dingxiang', 'call'], ['kefa'], ['jinfa'], ['peisong', 'kaika'], ['age', 'heyue'], ['tags'], ['selectNumber', 'iccid_auto_push'], ['is_recommend', 'is_open'], ['isHot', 'is_id_photo'], ['is_four_photo', 'four_photo_title'], ['four_photo'], ['product_image'], ['detail_images']]},
+        {title: '基本信息', rows: [['name', 'yys'], ['api_name', 'number'], ['status', 'guishudi'], ['yuezu', 'flow'], ['dingxiang', 'call'], ['kefa'], ['jinfa'], ['peisong', 'kaika'], ['age', 'heyue'], ['tags'], ['visible_group_ids'], ['selectNumber', 'iccid_auto_push'], ['is_recommend', 'is_open'], ['isHot', 'is_id_photo'], ['is_four_photo', 'four_photo_title'], ['four_photo'], ['product_image'], ['detail_images']]},
         {title: '结算信息', rows: [['commission', 'js_type'], ['card_type', 'card_price'], ['first_chongzhi'], ['rule'], ['js_require'], ['mark']]},
         {title: '三方下单', type: 'single_input', field: 'external_order_url'},
         {title: '下单自定义字段', type: 'custom_fields', field: 'product_custom_fields'},
@@ -209,6 +241,7 @@
             age: '18-65岁',
             heyue: '无合约',
             tags: '',
+            visible_group_ids: '',
             status: '1',
             is_open: '1',
             selectNumber: '0',
@@ -247,7 +280,60 @@
     }
 
     function $(selector) { return layui.jquery(selector); }
-    function layer() { return window.layuiLayer; }
+    function layer() {
+        var hostWindow = getHostWindow();
+        return (hostWindow.layui && hostWindow.layui.layer) || hostWindow.layer || window.layuiLayer;
+    }
+    function lockDrawerScroll() {
+        layui.jquery('body').css('overflow', 'hidden');
+        var hostDocument = getHostDocument();
+        if (hostDocument !== document) {
+            layui.jquery(hostDocument.body).css('overflow', 'hidden');
+        }
+    }
+    function unlockDrawerScroll() {
+        layui.jquery('body').css('overflow', '');
+        var hostDocument = getHostDocument();
+        if (hostDocument !== document) {
+            layui.jquery(hostDocument.body).css('overflow', '');
+        }
+    }
+    function normalizeDrawerLayer(layero, index) {
+        var hostDocument = getHostDocument();
+        var $hostDocument = layui.jquery(hostDocument);
+        var $shade = $hostDocument.find('#layui-layer-shade' + index);
+        $shade.css({
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh'
+        });
+        layero.css({
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: '100vh',
+            'max-height': '100vh'
+        });
+        layero.find('.layui-layer-content').css({
+            'overflow-y': 'auto',
+            'overflow-x': 'hidden',
+            'height': 'calc(100vh - 42px)',
+            'max-height': 'calc(100vh - 42px)'
+        });
+    }
+    function eventTargets() {
+        var $targets = layui.jquery(document);
+        var hostDocument = getHostDocument();
+        if (hostDocument !== document) {
+            $targets = $targets.add(hostDocument);
+        }
+        return $targets;
+    }
     function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
     function jsEsc(v) { return String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, '\\\''); }
     function text(v) { return String(v == null ? '' : v).replace(/<[^>]+>/g, '').trim(); }
@@ -496,6 +582,40 @@
         return tagItems(value).join(',');
     }
 
+    function agentGroupOptions() {
+        return Array.isArray(window.productAgentGroupOptions) ? window.productAgentGroupOptions : [];
+    }
+
+    function parseVisibleGroupIds(value) {
+        var seen = {};
+        return String(value || '')
+            .split(/[,\s]+/)
+            .map(function (item) { return parseInt(item, 10); })
+            .filter(function (id) {
+                if (!id || id <= 0 || seen[id]) return false;
+                seen[id] = true;
+                return true;
+            })
+            .map(function (id) { return String(id); });
+    }
+
+    function normalizeVisibleGroupValue(value) {
+        return parseVisibleGroupIds(value).join(',');
+    }
+
+    function formatVisibleGroupText(value) {
+        var ids = parseVisibleGroupIds(value);
+        if (!ids.length) return '全部分组';
+        var groups = agentGroupOptions();
+        var names = {};
+        groups.forEach(function (group) {
+            names[String(group.id || '')] = group.name || '';
+        });
+        return ids.map(function (id) {
+            return names[id] || ('分组#' + id);
+        }).join('、');
+    }
+
     function fieldPlaceholder(field, cfg) {
         var custom = cfg && cfg.placeholder;
         if (custom) return custom;
@@ -572,13 +692,40 @@
             '</div>';
     }
 
+    function renderGroupField(product) {
+        var ids = parseVisibleGroupIds(currentFieldValue('visible_group_ids', product));
+        var checkedMap = {};
+        ids.forEach(function (id) { checkedMap[id] = true; });
+        var html = '<div class="product-detail-group-editor js-visible-group-editor" data-field="visible_group_ids">' +
+            '<label class="product-detail-group-option"><input type="checkbox" class="js-visible-group-all" value="" ' + (ids.length ? '' : 'checked') + '>全部分组</label>';
+        agentGroupOptions().forEach(function (group) {
+            var id = String(group.id || '');
+            if (!id) return;
+            html += '<label class="product-detail-group-option"><input type="checkbox" class="js-visible-group-item" value="' + esc(id) + '" ' + (checkedMap[id] ? 'checked' : '') + '>' + esc(group.name || ('分组#' + id)) + '</label>';
+        });
+        html += '<div class="product-detail-group-note">勾选具体分组后，仅这些分组的代理可看到该产品；全部分组表示不限制。</div></div>';
+        return html;
+    }
+
+    function collectVisibleGroupValue($editor) {
+        if (!$editor || !$editor.length || $editor.find('.js-visible-group-all').prop('checked')) {
+            return '';
+        }
+        var ids = [];
+        $editor.find('.js-visible-group-item:checked').each(function () {
+            ids.push(layui.jquery(this).val());
+        });
+        return normalizeVisibleGroupValue(ids.join(','));
+    }
+
     function renderBasicField(field, product) {
         var cfg = configs[field] || {label: field, editor: 'text'};
         var value = currentFieldValue(field, product);
         if (cfg.editor === 'readonly') return renderReadonlyValue(field, product);
         if (cfg.editor === 'custom_fields') return renderCustomFieldsBuilder(product);
         if (cfg.editor === 'image' || cfg.editor === 'images') return renderImageField(field, product);
-        if (cfg.editor === 'channel') return '<input id="productDetailChannelCascader" placeholder="请选择渠道商" class="layui-hide" />';
+        if (cfg.editor === 'channel') return '<select id="productDetailChannelSelect" class="product-detail-channel-select"><option value="">加载渠道商...</option></select><input id="productDetailChannelCascader" placeholder="请选择渠道商" class="layui-hide" />';
+        if (cfg.editor === 'groups') return renderGroupField(product);
         if (field === 'kefa' || field === 'jinfa') return renderRegionField(field, product);
         if (field === 'tags') return renderTagField(product);
         if (field === 'number' && isSelfChannel(product)) {
@@ -688,6 +835,71 @@
         return [];
     }
 
+    function flattenChannelOptions(data) {
+        var options = [];
+        (data || []).forEach(function (item) {
+            if (item.children && item.children.length) {
+                item.children.forEach(function (child) {
+                    options.push({value: child.value, label: item.label + '/' + child.label});
+                });
+            } else {
+                options.push({value: item.value, label: item.label});
+            }
+        });
+        return options;
+    }
+
+    function currentChannelValue(data) {
+        if (!state || !state.data) return '';
+        var currentApiName = state.data.api_name_display || state.data.api_name || '';
+        var currentApiConfigId = parseInt(state.data.api_config_id || 0, 10);
+        var currentSelfChannelId = String(state.data.self_channel_id || 0);
+        if (currentApiName.indexOf('自营') === 0 && currentSelfChannelId !== '0') {
+            var selfPath = findSelfPath(currentSelfChannelId, data);
+            if (selfPath.length) return selfPath[selfPath.length - 1];
+        }
+        var apiPath = findApiPath(currentApiName, currentApiConfigId, data);
+        return apiPath.length ? apiPath[apiPath.length - 1] : '';
+    }
+
+    function applyChannelMeta(meta) {
+        if (!meta || !state || !state.data) return;
+        if (state.mode === 'create') {
+            if (meta.type === 'self') {
+                state.data.api_name = '自营';
+                state.data.api_name_display = '自营/' + meta.self_channel_name;
+                state.data.api_config_id = 0;
+                state.data.self_channel_id = String(meta.self_channel_id || 0);
+                state.data.number = '';
+            } else {
+                state.data.api_name = meta.api_name;
+                state.data.api_name_display = meta.api_name;
+                state.data.api_config_id = parseInt(meta.api_config_id || 0, 10);
+                state.data.self_channel_id = 0;
+            }
+            updateBasicPanel();
+        } else {
+            var nextValue = meta.type === 'self' ? ('自营/' + meta.self_channel_name) : meta.api_name;
+            save('api_name', nextValue, null, {
+                api_config_id: meta.type === 'self' ? 0 : parseInt(meta.api_config_id || 0, 10),
+                self_channel_id: meta.type === 'self' ? parseInt(meta.self_channel_id || 0, 10) : 0
+            });
+        }
+    }
+
+    function renderChannelSelect(data) {
+        if (!state || !state.root) return;
+        var $select = state.root.find('#productDetailChannelSelect');
+        if (!$select.length) return;
+        var options = flattenChannelOptions(data);
+        var currentValue = currentChannelValue(data);
+        var html = '<option value="">请选择渠道商</option>';
+        options.forEach(function (item) {
+            html += '<option value="' + esc(item.value) + '"' + (String(item.value) === String(currentValue) ? ' selected' : '') + '>' + esc(item.label) + '</option>';
+        });
+        $select.html(html);
+    }
+
     function ensureChannelData(callback) {
         callback = callback || function () {};
         if (channelState.loaded) {
@@ -728,11 +940,14 @@
 
     function initChannelCascader() {
         var cascader = window.layuiCascader;
-        if (!cascader || !state || !state.root || state.activeTab !== 'basic') return;
+        if (!state || !state.root || state.activeTab !== 'basic') return;
         var $elem = state.root.find('#productDetailChannelCascader');
-        if (!$elem.length) return;
+        var $select = state.root.find('#productDetailChannelSelect');
+        if (!$elem.length && !$select.length) return;
         ensureChannelData(function () {
             var data = buildChannelCascaderData();
+            renderChannelSelect(data);
+            if (!cascader || !$elem.length) return;
             channelState.cascaderIns = cascader.render({
                 elem: '#productDetailChannelCascader',
                 data: data,
@@ -745,24 +960,7 @@
                     var selected = values && values.length ? values[values.length - 1] : '';
                     var meta = channelState.meta[selected];
                     if (!meta) return;
-                    if (state.mode === 'create') {
-                        if (meta.type === 'self') {
-                            state.data.api_name = '自营';
-                            state.data.api_name_display = '自营/' + meta.self_channel_name;
-                            state.data.api_config_id = 0;
-                            state.data.self_channel_id = String(meta.self_channel_id || 0);
-                            state.data.number = '';
-                        } else {
-                            state.data.api_name = meta.api_name;
-                            state.data.api_name_display = meta.api_name;
-                            state.data.api_config_id = parseInt(meta.api_config_id || 0, 10);
-                            state.data.self_channel_id = 0;
-                        }
-                        updateBasicPanel();
-                    } else {
-                        var nextValue = meta.type === 'self' ? ('自营/' + meta.self_channel_name) : meta.api_name;
-                        save('api_name', nextValue);
-                    }
+                    applyChannelMeta(meta);
                 }
             });
             var $wrap = $elem.closest('.product-detail-value');
@@ -1007,6 +1205,7 @@
         if (String(product.iccid_auto_push) === '1') badges.push(badge('ICCID推送', 'allow'));
         if (String(product.isHot) === '1') badges.push(badge('热门', 'hot'));
         if (String(product.is_recommend) === '1') badges.push(badge('推荐', 'info'));
+        if (parseVisibleGroupIds(product.visible_group_ids || '').length) badges.push(badge(formatVisibleGroupText(product.visible_group_ids), 'info', false));
         return '<div class="product-detail-header"><div><img class="product-detail-cover js-product-detail-preview" data-images="' + esc(JSON.stringify([img])) + '" src="' + esc(img) + '" alt="产品图片"></div>' +
             '<div class="product-detail-meta"><h2 class="product-detail-name">' + esc(product.name || '') + '</h2><div class="product-detail-package">' + esc(packageText(product)) + '</div><div class="product-detail-tags"><div class="product-detail-tags-left">' + badges.join('') + '</div></div><div class="product-detail-times"><span>创建时间: ' + esc(product.create_time || '') + '</span><span>更新时间: ' + esc(product.update_time || '') + '</span></div></div></div>';
     }
@@ -1125,10 +1324,13 @@
         });
     }
 
-    function save(field, value, editorIndex) {
+    function save(field, value, editorIndex, extraPayload) {
         if (!state || !state.data) return;
         if (field === 'product_custom_fields') {
             value = stringifyCustomFields(parseCustomFields(value));
+        }
+        if (field === 'visible_group_ids') {
+            value = normalizeVisibleGroupValue(value);
         }
         if (state.mode === 'create') {
             if (field === 'tags') value = normalizeTagValue(value);
@@ -1156,11 +1358,19 @@
             return;
         }
         var loading = layer().load(2, {shade: [0.15, '#000']});
-        layui.jquery.post('/admin/product/quickUpdateField', {
+        var payload = {
             id: state.data.id,
             field: field,
             value: value
-        }, function (res) {
+        };
+        if (extraPayload) {
+            for (var extraKey in extraPayload) {
+                if (Object.prototype.hasOwnProperty.call(extraPayload, extraKey)) {
+                    payload[extraKey] = extraPayload[extraKey];
+                }
+            }
+        }
+        layui.jquery.post('/admin/product/quickUpdateField', payload, function (res) {
             layer().close(loading);
             if (res.code !== 1 || !res.data) {
                 layer().msg(res.msg || '保存失败', {icon: 2});
@@ -1251,6 +1461,7 @@
             js_require: data.js_require || '',
             mark: data.mark || '',
             tags: normalizeTagValue(data.tags || ''),
+            visible_group_ids: normalizeVisibleGroupValue(data.visible_group_ids || ''),
             product_image: data.product_image || '',
             detail_images: data.detail_images || '',
             external_order_url: data.external_order_url || '',
@@ -1345,6 +1556,7 @@
 
     function open(data) {
         ensureStyles();
+        getHostWindow().productDetailEditor = window.productDetailEditor;
         var productId = data && typeof data === 'object' ? data.id : data;
         if (!productId) {
             layer().msg('产品ID不能为空', {icon: 2});
@@ -1371,15 +1583,14 @@
                 move: false,
                 skin: 'layer-drawer-right',
                 success: function (layero, index) {
-                    layui.jquery('body').css('overflow', 'hidden');
-                    var layerContent = layero.find('.layui-layer-content');
-                    layerContent.css({'overflow-y': 'auto', 'overflow-x': 'hidden', 'height': 'calc(100% - 42px)'});
+                    lockDrawerScroll();
+                    normalizeDrawerLayer(layero, index);
                     state = {index: index, layero: layero, root: layero.find('#productDetailEditorRoot'), data: res.data, activeTab: 'basic', mode: 'edit', loadedTabs: {}, embeddedHeights: {}};
                     render();
                     setTimeout(function () { layero.addClass('layer-drawer-show'); }, 50);
                 },
                 end: function () {
-                    layui.jquery('body').css('overflow', '');
+                    unlockDrawerScroll();
                     state = null;
                 }
             });
@@ -1391,6 +1602,7 @@
 
     function openCreate() {
         ensureStyles();
+        getHostWindow().productDetailEditor = window.productDetailEditor;
         layer().open({
             type: 1,
             title: '添加商品',
@@ -1405,21 +1617,20 @@
             move: false,
             skin: 'layer-drawer-right',
             success: function (layero, index) {
-                layui.jquery('body').css('overflow', 'hidden');
-                var layerContent = layero.find('.layui-layer-content');
-                layerContent.css({'overflow-y': 'auto', 'overflow-x': 'hidden', 'height': 'calc(100% - 42px)'});
+                lockDrawerScroll();
+                normalizeDrawerLayer(layero, index);
                 state = {index: index, layero: layero, root: layero.find('#productDetailEditorRoot'), data: createEmptyProduct(), activeTab: 'basic', mode: 'create', loadedTabs: {}, embeddedHeights: {}};
                 render();
                 setTimeout(function () { layero.addClass('layer-drawer-show'); }, 50);
             },
             end: function () {
-                layui.jquery('body').css('overflow', '');
+                unlockDrawerScroll();
                 state = null;
             }
         });
     }
 
-    layui.jquery(document)
+    eventTargets()
         .off('click.productDetailPreview')
         .on('click.productDetailPreview', '.js-product-detail-preview', function (e) {
             e.preventDefault();
@@ -1515,14 +1726,40 @@
         .off('click.productDetailCellActivate')
         .on('click.productDetailCellActivate', '.product-detail-editable', function (e) {
             var $target = layui.jquery(e.target);
-            if ($target.closest('.js-product-detail-preview,.js-detail-inline-input,.js-detail-inline-textarea,.js-detail-inline-select,.layui-cascader,.layui-form-select,.product-detail-upload-btn,.product-detail-upload-link,.product-detail-image-action,.product-detail-image-upload,.product-custom-field-add,.product-custom-field-remove,.product-custom-field-input,.product-custom-field-select,.product-custom-field-textarea').length) {
+            if ($target.closest('.js-product-detail-preview,.js-detail-inline-input,.js-detail-inline-textarea,.js-detail-inline-select,.layui-cascader,.layui-form-select,.product-detail-upload-btn,.product-detail-upload-link,.product-detail-image-action,.product-detail-image-upload,.product-custom-field-add,.product-custom-field-remove,.product-custom-field-input,.product-custom-field-select,.product-custom-field-textarea,.js-visible-group-editor').length) {
                 return;
             }
             activateCellEditor(layui.jquery(this));
         })
+        .off('change.productDetailVisibleGroups')
+        .on('change.productDetailVisibleGroups', '.js-visible-group-all, .js-visible-group-item', function () {
+            var $input = layui.jquery(this);
+            var $editor = $input.closest('.js-visible-group-editor');
+            if ($input.hasClass('js-visible-group-all')) {
+                if ($input.prop('checked')) {
+                    $editor.find('.js-visible-group-item').prop('checked', false);
+                } else if (!$editor.find('.js-visible-group-item:checked').length) {
+                    $input.prop('checked', true);
+                }
+            } else {
+                if ($editor.find('.js-visible-group-item:checked').length) {
+                    $editor.find('.js-visible-group-all').prop('checked', false);
+                } else {
+                    $editor.find('.js-visible-group-all').prop('checked', true);
+                }
+            }
+            save('visible_group_ids', collectVisibleGroupValue($editor));
+        })
         .off('change.productDetailInlineSelect')
         .on('change.productDetailInlineSelect', '.js-detail-inline-select', function () {
             save(layui.jquery(this).data('field'), layui.jquery(this).val());
+        })
+        .off('change.productDetailChannelSelect')
+        .on('change.productDetailChannelSelect', '#productDetailChannelSelect', function () {
+            var selected = layui.jquery(this).val();
+            var meta = channelState.meta[selected];
+            if (!meta) return;
+            applyChannelMeta(meta);
         })
         .off('blur.productDetailInlineInput')
         .on('blur.productDetailInlineInput', '.js-detail-inline-input, .js-detail-inline-textarea', function () {

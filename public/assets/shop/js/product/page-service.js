@@ -200,7 +200,13 @@
             return;
         }
 
-        var verifyType = verifyTypeField.value;
+        var verifyCodeField = document.querySelector('input[name="verify_code"]');
+        if (!verifyCodeField) {
+            verifyTypeField.value = 'none';
+            return;
+        }
+
+        var verifyType = String(verifyTypeField.value || '').toLowerCase();
         if (verifyType === 'none') {
             return;
         }

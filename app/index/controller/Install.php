@@ -32,6 +32,93 @@ class Install
         
         return View::fetch('install/welcome');
     }
+
+    /**
+     * Vue安装向导初始化数据
+     */
+    public function vueInfo()
+    {
+        $envData = $this->checkEnvironment();
+        $phpExtensions = array();
+        $phpFunctions = array();
+        $directories = array();
+
+        foreach ($envData as $key => $check) {
+            if (!is_array($check) || !isset($check['type'])) {
+                continue;
+            }
+            $item = array(
+                'key' => $key,
+                'name' => $check['name'] ?? $key,
+                'status' => !empty($check['status']),
+                'required' => (($check['type'] ?? '') === 'required'),
+                'description' => $check['description'] ?? '',
+            );
+            if (in_array($key, array('pdo', 'pdo_mysql', 'mbstring', 'openssl', 'curl', 'fileinfo', 'gd', 'json'))) {
+                $phpExtensions[] = $item;
+            } elseif ($key === 'exec_function') {
+                $phpFunctions[] = $item;
+            } elseif (strpos($key, 'dir_') === 0) {
+                $dirName = str_replace('dir_', '', $key);
+                $dirName = str_replace('_', '/', $dirName);
+                $directories[] = array(
+                    'name' => $dirName,
+                    'status' => !empty($check['status']),
+                    'required' => true,
+                    'description' => $check['description'] ?? '',
+                );
+            }
+        }
+
+        $databaseConfig = array(
+            'hostname' => 'localhost',
+            'hostport' => '3306',
+            'database' => '',
+            'username' => '',
+            'password' => ''
+        );
+        $sessionConfig = session('install_db_config');
+        if (is_array($sessionConfig) && !empty($sessionConfig['hostname'])) {
+            $databaseConfig = array_merge($databaseConfig, array(
+                'hostname' => (string)($sessionConfig['hostname'] ?? 'localhost'),
+                'hostport' => (string)($sessionConfig['hostport'] ?? '3306'),
+                'database' => (string)($sessionConfig['database'] ?? ''),
+                'username' => (string)($sessionConfig['username'] ?? ''),
+                'password' => (string)($sessionConfig['password'] ?? '')
+            ));
+        }
+
+        $hasExistingConfig = $this->hasValidDatabaseConfig();
+        $existingConfigInfo = null;
+        if ($hasExistingConfig) {
+            try {
+                $config = $this->getInstallDatabaseConfig();
+                $existingConfigInfo = array(
+                    'hostname' => (string)($config['hostname'] ?? ''),
+                    'database' => (string)($config['database'] ?? ''),
+                    'username' => (string)($config['username'] ?? '')
+                );
+            } catch (\Exception $e) {
+                $hasExistingConfig = false;
+            }
+        }
+
+        return json(array(
+            'code' => 1,
+            'msg' => 'success',
+            'data' => array(
+                'installed' => $this->isInstalled(),
+                'php_version' => PHP_VERSION,
+                'can_continue' => !empty($envData['can_continue']),
+                'php_extensions' => $phpExtensions,
+                'php_functions' => $phpFunctions,
+                'directories' => $directories,
+                'database_config' => $databaseConfig,
+                'has_existing_config' => $hasExistingConfig,
+                'existing_config' => $existingConfigInfo,
+            )
+        ));
+    }
     
     /**
      * 环境检测
@@ -780,33 +867,15 @@ class Install
     }
     
     /**
-     * 清除所有Session
+     * 清除旧登录凭据
      */
     private function clearAllSessions()
     {
         try {
-
-            if (class_exists('\think\facade\Session')) {
-                \think\facade\Session::clear();
-            }
-            
-            if (session_status() == PHP_SESSION_ACTIVE) {
-                session_destroy();
-            }
-            
-            if (session_status() == PHP_SESSION_NONE) {
-                $sessionPath = app()->getRuntimePath() . 'session';
-                if (is_dir($sessionPath)) {
-                    session_save_path($sessionPath);
+            foreach (['agent_token', 'admin_login_agent'] as $cookieName) {
+                if (isset($_COOKIE[$cookieName])) {
+                    setcookie($cookieName, '', time() - 3600, '/');
                 }
-                session_start();
-            }
-            
-            $_SESSION = array();
-            session_regenerate_id(true);
-            
-            if (isset($_COOKIE[session_name()])) {
-                setcookie(session_name(), '', time() - 3600, '/');
             }
         } catch (\Exception $e) {
         }
@@ -848,7 +917,7 @@ class Install
             require_once $authCorePath;
             
 
-            $versionFile = app()->getBasePath() . 'version.php';
+            $versionFile = app()->getRootPath() . 'version.php';
             $versionInfo = array('version' => '1.0.0');
             
             if (file_exists($versionFile)) {

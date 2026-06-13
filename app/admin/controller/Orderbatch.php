@@ -2,7 +2,6 @@
 namespace app\admin\controller;
 
 use think\facade\Db;
-use think\facade\Session;
 use think\facade\View;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -10,9 +9,12 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use app\common\helper\AuHelper;
-
+use app\common\service\ImageTemplateService;
+use app\common\service\UploadPathService;
 class Orderbatch extends Base
 {
+    private const SETTLEMENT_PASSWORD_KEY = 'order_batch_settlement_password_hash';
+
     public function __construct()
     {
         parent::__construct(); // 调用父类构造函数，执行登录检查🆕
@@ -40,7 +42,7 @@ class Orderbatch extends Base
             $sheet->setCellValue('D1', '物流单号');
             $sheet->setCellValue('E1', 'ICCID');
             $sheet->setCellValue('F1', 'PUK');
-            $sheet->setCellValue('G1', '订单状态（0-7或中文）');
+            $sheet->setCellValue('G1', '订单状态');
             $sheet->setCellValue('H1', '备注');
 
             // 关键列强制按文本处理，避免 Excel/WPS 把 ICCID、订单号等转成科学计数法
@@ -59,7 +61,7 @@ class Orderbatch extends Base
             $sheet->getColumnDimension('D')->setWidth(20);
             $sheet->getColumnDimension('E')->setWidth(24);
             $sheet->getColumnDimension('F')->setWidth(18);
-            $sheet->getColumnDimension('G')->setWidth(20);
+            $sheet->getColumnDimension('G')->setWidth(22);
             $sheet->getColumnDimension('H')->setWidth(30);
             
             // 添加说明行
@@ -76,6 +78,18 @@ class Orderbatch extends Base
             $sheet->setCellValueExplicit('F3', '12345678', DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('G3', '待发货', DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('H3', '备注信息示例', DataType::TYPE_STRING);
+
+            $statusValidation = $sheet->getCell('G3')->getDataValidation();
+            $statusValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $statusValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+            $statusValidation->setAllowBlank(true);
+            $statusValidation->setShowInputMessage(true);
+            $statusValidation->setShowErrorMessage(true);
+            $statusValidation->setShowDropDown(true);
+            $statusValidation->setFormula1('"已提交,待发货,已发货,待传照片,已激活,审核失败"');
+            for ($row = 4; $row <= 1000; $row++) {
+                $sheet->getCell('G' . $row)->setDataValidation(clone $statusValidation);
+            }
             
             // 先写入临时文件，再输出下载，避免输出缓冲导致 xlsx 损坏
             $tempFile = tempnam(sys_get_temp_dir(), 'order_batch_tpl_');
@@ -117,65 +131,81 @@ class Orderbatch extends Base
         }
     }
 
-    /**
-     * 下载CSV模板（无需依赖，轻量快速）
-     */
-    public function downloadCsvTemplate()
+    public function downloadSettlementTemplate()
     {
         try {
-            // 设置 CSV 文件头
-            $filename = '订单批量操作模板_' . date('YmdHis') . '.csv';
-            header('Content-Type: text/csv; charset=UTF-8');
-            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('佣金结算模板');
+
+            $sheet->setCellValue('A1', '订单号');
+            $sheet->setCellValue('B1', '上游订单号');
+            $sheet->setCellValue('C1', '生产号码');
+            $sheet->setCellValue('D1', '订单状态');
+            $sheet->setCellValue('E1', '备注');
+            $sheet->getStyle('A:E')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+            $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+            $sheet->getStyle('A1:E1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFE0E0E0');
+
+            $sheet->getColumnDimension('A')->setWidth(28);
+            $sheet->getColumnDimension('B')->setWidth(32);
+            $sheet->getColumnDimension('C')->setWidth(18);
+            $sheet->getColumnDimension('D')->setWidth(18);
+            $sheet->getColumnDimension('E')->setWidth(30);
+
+            $sheet->setCellValueExplicit('A2', 'SH202410210001', DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B2', 'P2025111605252231760714165', DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('C2', '13800138000', DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('D2', '已结算', DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('E2', '备注信息示例', DataType::TYPE_STRING);
+
+            $validation = $sheet->getCell('D2')->getDataValidation();
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+            $validation->setAllowBlank(false);
+            $validation->setShowInputMessage(true);
+            $validation->setShowErrorMessage(true);
+            $validation->setShowDropDown(true);
+            $validation->setFormula1('"已结算,结算失败"');
+            for ($row = 3; $row <= 1000; $row++) {
+                $sheet->getCell('D' . $row)->setDataValidation(clone $validation);
+            }
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'commission_settlement_tpl_');
+            if ($tempFile === false) {
+                throw new \RuntimeException('无法创建临时文件');
+            }
+            $xlsxFile = $tempFile . '.xlsx';
+            @unlink($tempFile);
+
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($xlsxFile);
+            $filename = '订单结算导入模板_' . date('YmdHis') . '.xlsx';
+
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            if (function_exists('ini_set')) {
+                @ini_set('zlib.output_compression', 'Off');
+            }
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . rawurlencode($filename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+            header('Content-Length: ' . filesize($xlsxFile));
             header('Cache-Control: max-age=0');
-            
-            // 打开输出流
-            $output = fopen('php://output', 'w');
-            
-            // 添加 BOM 头（确保 Excel 正确识别 UTF-8）
-            fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // 写入表头
-            fputcsv($output, [
-                '订单号（支持本地订单号或上游订单号）',
-                '生产号码',
-                '物流公司',
-                '物流单号',
-                'ICCID',
-                'PUK',
-                '订单状态（0-7或中文）',
-                '备注'
-            ]);
-            
-            // 写入说明行
-            fputcsv($output, [
-                '填写本地订单号（如 SH202410210001）或上游订单号（如 P2025111605252231760714165）',
-                '选填',
-                '选填',
-                '选填',
-                '选填（请保持文本格式）',
-                '选填',
-                '选填（支持 0-7 或中文状态）',
-                '选填'
-            ]);
-            
-            // 写入示例数据
-            fputcsv($output, [
-                'SH202410210001',
-                '13800138000',
-                '顺丰速运',
-                'SF1234567890',
-                '8986001234567890123',
-                '12345678',
-                '待发货',
-                '备注信息示例'
-            ]);
-            
-            fclose($output);
+            header('Pragma: public');
+            header('Expires: 0');
+
+            readfile($xlsxFile);
+
+            @unlink($xlsxFile);
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
             exit;
-            
         } catch (\Exception $e) {
-            return $this->error('CSV模板生成失败：' . $e->getMessage());
+            return $this->error('模板生成失败：' . $e->getMessage());
         }
     }
 
@@ -191,16 +221,11 @@ class Orderbatch extends Base
                 return json(['code' => 0, 'msg' => '请选择文件']);
             }
             
-            // 保存上传文件到临时目录
-            $uploadPath = root_path() . 'public/uploads/temp/' . date('Ymd') . '/';
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-            
             $extension = strtolower($file->getOriginalExtension());
             $savename = md5(uniqid()) . '.' . $extension;
-            $file->move($uploadPath, $savename);
-            $filePath = $uploadPath . $savename;
+            $target = UploadPathService::buildPublicTarget('temp', 'import/order/' . date('Ymd') . '/' . $savename);
+            $file->move($target['absolute_dir'], $savename);
+            $filePath = $target['absolute_path'];
             
             $items = [];
             $errors = [];
@@ -358,6 +383,96 @@ class Orderbatch extends Base
         }
     }
 
+    public function importSettlementExcel()
+    {
+        try {
+            $file = request()->file('file');
+            if (!$file) {
+                return json(['code' => 0, 'msg' => '请选择文件']);
+            }
+
+            $extension = strtolower($file->getOriginalExtension());
+            if (!in_array($extension, ['xlsx', 'xls'], true)) {
+                return json(['code' => 0, 'msg' => '请上传 Excel 文件']);
+            }
+
+            $savename = md5(uniqid()) . '.' . $extension;
+            $target = UploadPathService::buildPublicTarget('temp', 'import/settlement/' . date('Ymd') . '/' . $savename);
+            $file->move($target['absolute_dir'], $savename);
+            $filePath = $target['absolute_path'];
+
+            $items = [];
+            $errors = [];
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $highestRow = $sheet->getHighestRow();
+
+            for ($row = 2; $row <= $highestRow; $row++) {
+                $orderNo = $this->readSheetCellString($sheet, 'A' . $row);
+                $upOrderNo = $this->readSheetCellString($sheet, 'B' . $row);
+                $productionNumber = $this->readSheetCellString($sheet, 'C' . $row);
+                $statusText = $this->readSheetCellString($sheet, 'D' . $row);
+                $remark = $this->readSheetCellString($sheet, 'E' . $row);
+
+                if (($orderNo === null || $orderNo === '') && ($upOrderNo === null || $upOrderNo === '')) {
+                    continue;
+                }
+
+                $statusParse = $this->parseSettlementOrderStatus($statusText);
+                if (!$statusParse['success']) {
+                    $errors[] = "第{$row}行：" . $statusParse['message'];
+                    continue;
+                }
+
+                $whereOr = [];
+                if ($orderNo !== null && $orderNo !== '') {
+                    $whereOr[] = ['order_no', '=', $orderNo];
+                }
+                if ($upOrderNo !== null && $upOrderNo !== '') {
+                    $whereOr[] = ['up_order_no', '=', $upOrderNo];
+                }
+                $order = Db::name('order')->whereOr($whereOr)->find();
+
+                if (!$order) {
+                    $errors[] = "第{$row}行：订单不存在";
+                    continue;
+                }
+
+                $items[] = $this->buildImportItem($order, $orderNo ?: $upOrderNo, [
+                    'new_remark' => $remark,
+                    'new_production_number' => $productionNumber,
+                    'new_express_company' => null,
+                    'new_tracking_number' => null,
+                    'new_iccid' => null,
+                    'new_puk' => null,
+                    'new_status' => $statusParse['value'],
+                ]);
+            }
+
+            @unlink($filePath);
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+
+            if (empty($items) && empty($errors)) {
+                return json(['code' => 0, 'msg' => '文件中没有有效数据']);
+            }
+
+            return json([
+                'code' => 1,
+                'msg' => '导入成功',
+                'data' => [
+                    'items' => $items,
+                    'total' => count($items),
+                    'errors' => $errors,
+                    'operation_type' => 'settlement',
+                    'has_changes' => 1
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => '导入失败：' . $e->getMessage()]);
+        }
+    }
+
     /**
      * 粘贴订单号导入
      */
@@ -373,7 +488,8 @@ class Orderbatch extends Base
             $items = [];
             $errors = [];
 
-            if (in_array($updateField, ['remark', 'production_number', 'express'], true)) {
+            $supportedUpdateFields = ['remark', 'production_number', 'express_company', 'tracking_number', 'iccid', 'puk'];
+            if (in_array($updateField, $supportedUpdateFields, true)) {
                 $lines = preg_split('/\r\n|\r|\n/u', $orderText, -1, PREG_SPLIT_NO_EMPTY);
                 if (empty($lines)) {
                     return json(['code' => 0, 'msg' => '未识别到有效内容']);
@@ -399,29 +515,7 @@ class Orderbatch extends Base
                         continue;
                     }
 
-                    $items[] = [
-                        'order_no' => $order['order_no'],
-                        'up_order_no' => $order['up_order_no'],
-                        'input_order_no' => $orderNo,
-                        'order_id' => $order['id'],
-                        'current_status' => $order['order_status'],
-                        'current_remark' => $order['remark'],
-                        'current_production_number' => $order['production_number'],
-                        'current_express_company' => $order['express_company'],
-                        'current_tracking_number' => $order['tracking_number'],
-                        'current_iccid' => $order['iccid'] ?? '',
-                        'current_puk' => $order['puk'] ?? '',
-                        'new_remark' => $parsed['new_remark'],
-                        'new_production_number' => $parsed['new_production_number'],
-                        'new_express_company' => $parsed['new_express_company'],
-                        'new_tracking_number' => $parsed['new_tracking_number'],
-                        'new_iccid' => $parsed['new_iccid'],
-                        'new_puk' => $parsed['new_puk'],
-                        'new_status' => $parsed['new_status'],
-                        'customer_name' => $order['customer_name'],
-                        'phone' => $order['phone'],
-                        'product_name' => $order['product_name'],
-                    ];
+                    $items[] = $this->buildImportItem($order, $orderNo, $parsed);
                 }
             } else {
                 $rawList = preg_split('/[\s,，;；]+/u', $orderText, -1, PREG_SPLIT_NO_EMPTY);
@@ -453,18 +547,7 @@ class Orderbatch extends Base
                         continue;
                     }
 
-                    $items[] = [
-                        'order_no' => $order['order_no'],
-                        'up_order_no' => $order['up_order_no'],
-                        'input_order_no' => $orderNo,
-                        'order_id' => $order['id'],
-                        'current_status' => $order['order_status'],
-                        'current_remark' => $order['remark'],
-                        'current_production_number' => $order['production_number'],
-                        'current_express_company' => $order['express_company'],
-                        'current_tracking_number' => $order['tracking_number'],
-                        'current_iccid' => $order['iccid'] ?? '',
-                        'current_puk' => $order['puk'] ?? '',
+                    $items[] = $this->buildImportItem($order, $orderNo, [
                         'new_remark' => '',
                         'new_production_number' => '',
                         'new_express_company' => '',
@@ -472,10 +555,7 @@ class Orderbatch extends Base
                         'new_iccid' => null,
                         'new_puk' => null,
                         'new_status' => null,
-                        'customer_name' => $order['customer_name'],
-                        'phone' => $order['phone'],
-                        'product_name' => $order['product_name'],
-                    ];
+                    ]);
                 }
             }
 
@@ -490,7 +570,7 @@ class Orderbatch extends Base
                     'items' => $items,
                     'total' => count($items),
                     'errors' => $errors,
-                    'operation_type' => in_array($updateField, ['remark', 'production_number', 'express'], true) ? 'update' : 'status',
+                    'operation_type' => in_array($updateField, $supportedUpdateFields, true) ? 'update' : 'status',
                     'update_field' => $updateField
                 ]
             ]);
@@ -503,36 +583,6 @@ class Orderbatch extends Base
     {
         if ($line === '') {
             return ['success' => false, 'message' => '内容为空'];
-        }
-
-        $segments = preg_split('/[\t,，|]+/u', $line, -1, PREG_SPLIT_NO_EMPTY);
-        if ($updateField === 'express') {
-            if (count($segments) < 3) {
-                $segments = preg_split('/\s+/u', $line, -1, PREG_SPLIT_NO_EMPTY);
-            }
-            if (count($segments) < 3) {
-                return ['success' => false, 'message' => '物流信息格式不正确，请按“订单号 物流公司 物流单号”填写'];
-            }
-
-            $orderNo = trim((string)array_shift($segments));
-            $expressCompany = trim((string)array_shift($segments));
-            $trackingNumber = trim((string)implode(' ', $segments));
-
-            if ($orderNo === '' || $expressCompany === '' || $trackingNumber === '') {
-                return ['success' => false, 'message' => '物流信息格式不正确，请按“订单号 物流公司 物流单号”填写'];
-            }
-
-            return [
-                'success' => true,
-                'order_no' => $orderNo,
-                'new_remark' => '',
-                'new_production_number' => '',
-                'new_express_company' => $expressCompany,
-                'new_tracking_number' => $trackingNumber,
-                'new_iccid' => null,
-                'new_puk' => null,
-                'new_status' => null,
-            ];
         }
 
         if (!preg_match('/^(\S+)[\s,，;；|]+(.+)$/u', $line, $matches)) {
@@ -550,10 +600,10 @@ class Orderbatch extends Base
             'order_no' => $orderNo,
             'new_remark' => $updateField === 'remark' ? $content : '',
             'new_production_number' => $updateField === 'production_number' ? $content : '',
-            'new_express_company' => '',
-            'new_tracking_number' => '',
-            'new_iccid' => null,
-            'new_puk' => null,
+            'new_express_company' => $updateField === 'express_company' ? $content : '',
+            'new_tracking_number' => $updateField === 'tracking_number' ? $content : '',
+            'new_iccid' => $updateField === 'iccid' ? $content : null,
+            'new_puk' => $updateField === 'puk' ? $content : null,
             'new_status' => null,
         ];
     }
@@ -619,17 +669,34 @@ class Orderbatch extends Base
             '4' => '4',
             '已激活' => '4',
             '激活' => '4',
-            '5' => '5',
-            '已结算' => '5',
-            '结算' => '5',
-            '6' => '6',
-            '结算失败' => '6',
             '7' => '7',
             '审核失败' => '7',
         ];
 
         if (!array_key_exists($raw, $statusMap)) {
-            return ['success' => false, 'message' => '订单状态仅支持 0-7 或中文状态名称'];
+            return ['success' => false, 'message' => '订单状态仅支持 0、1、2、3、4、7 或中文状态名称，已结算和结算失败请到佣金结算菜单处理'];
+        }
+
+        return ['success' => true, 'value' => $statusMap[$raw]];
+    }
+
+    private function parseSettlementOrderStatus($value): array
+    {
+        $raw = $this->normalizeNullableValue($value);
+        if ($raw === null) {
+            return ['success' => false, 'message' => '订单状态不能为空，只支持“已结算”或“结算失败”'];
+        }
+
+        $statusMap = [
+            '5' => '5',
+            '已结算' => '5',
+            '结算' => '5',
+            '6' => '6',
+            '结算失败' => '6',
+        ];
+
+        if (!array_key_exists($raw, $statusMap)) {
+            return ['success' => false, 'message' => '订单状态只支持“已结算”或“结算失败”'];
         }
 
         return ['success' => true, 'value' => $statusMap[$raw]];
@@ -648,6 +715,9 @@ class Orderbatch extends Base
 
     private function buildImportItem(array $order, string $inputOrderNo, array $changes): array
     {
+        $agentInfo = $this->buildImportAgentInfo((int)($order['agent_id'] ?? 0));
+        $productImage = $this->getImportProductImage($order);
+        $commission = (float)($order['commission'] ?? 0);
         return [
             'order_no' => $order['order_no'],
             'up_order_no' => $order['up_order_no'],
@@ -660,6 +730,7 @@ class Orderbatch extends Base
             'current_tracking_number' => $order['tracking_number'] ?? '',
             'current_iccid' => $order['iccid'] ?? '',
             'current_puk' => $order['puk'] ?? '',
+            'current_jh_time' => $order['jh_time'] ?? '',
             'new_remark' => $changes['new_remark'] ?? null,
             'new_production_number' => $changes['new_production_number'] ?? null,
             'new_express_company' => $changes['new_express_company'] ?? null,
@@ -670,7 +741,153 @@ class Orderbatch extends Base
             'customer_name' => $order['customer_name'],
             'phone' => $order['phone'],
             'product_name' => $order['product_name'],
+            'product_image' => $order['product_image'] ?? '',
+            'display_image' => $productImage,
+            'agent_id' => $order['agent_id'] ?? 0,
+            'agent_real_name' => $agentInfo['agent_real_name'],
+            'agent_username' => $agentInfo['agent_username'],
+            'agent_mobile' => $agentInfo['agent_mobile'],
+            'top_agent_id' => $agentInfo['top_agent_id'],
+            'top_agent_real_name' => $agentInfo['top_agent_real_name'],
+            'top_agent_username' => $agentInfo['top_agent_username'],
+            'top_agent_mobile' => $agentInfo['top_agent_mobile'],
+            'commission' => $commission,
+            'commission_text' => '¥' . number_format($commission, 2),
         ];
+    }
+
+    private function getImportProductImage(array $order): string
+    {
+        $productId = (int)($order['product_id'] ?? 0);
+        if ($productId <= 0) {
+            return (string)($order['product_image'] ?? '');
+        }
+
+        try {
+            $product = Db::name('product')
+                ->field('id, product_type, product_category, category_id')
+                ->where('id', $productId)
+                ->find();
+            if ($product) {
+                $displayImage = ImageTemplateService::getDisplayImageMapForProducts([$product])[$productId] ?? '';
+                if (!empty($displayImage)) {
+                    return (string)$displayImage;
+                }
+            }
+        } catch (\Throwable $e) {
+            // 图片兜底不影响订单导入预览
+        }
+
+        return (string)($order['product_image'] ?? '');
+    }
+
+    private function buildImportAgentInfo(int $agentId): array
+    {
+        $empty = [
+            'agent_real_name' => '',
+            'agent_username' => '',
+            'agent_mobile' => '',
+            'top_agent_id' => 0,
+            'top_agent_real_name' => '',
+            'top_agent_username' => '',
+            'top_agent_mobile' => '',
+        ];
+        if ($agentId <= 0) {
+            return $empty;
+        }
+
+        try {
+            $chain = [];
+            $currentId = $agentId;
+            $visited = [];
+            while ($currentId > 0 && !isset($visited[$currentId]) && count($chain) < 20) {
+                $visited[$currentId] = true;
+                $agent = Db::name('agents')
+                    ->field('id,parent_id,real_name,username,mobile')
+                    ->where('id', $currentId)
+                    ->find();
+                if (!$agent) {
+                    break;
+                }
+                $chain[] = $agent;
+                $currentId = (int)($agent['parent_id'] ?? 0);
+            }
+
+            if (empty($chain)) {
+                return $empty;
+            }
+
+            $directAgent = $chain[0];
+            $topAgent = $chain[count($chain) - 1];
+            return [
+                'agent_real_name' => (string)($directAgent['real_name'] ?? ''),
+                'agent_username' => (string)($directAgent['username'] ?? ''),
+                'agent_mobile' => $this->formatImportAgentMobile($directAgent['mobile'] ?? ''),
+                'top_agent_id' => (int)($topAgent['id'] ?? 0),
+                'top_agent_real_name' => (string)($topAgent['real_name'] ?? ''),
+                'top_agent_username' => (string)($topAgent['username'] ?? ''),
+                'top_agent_mobile' => $this->formatImportAgentMobile($topAgent['mobile'] ?? ''),
+            ];
+        } catch (\Throwable $e) {
+            return $empty;
+        }
+    }
+
+    private function formatImportAgentMobile($mobile): string
+    {
+        $mobile = trim((string)$mobile);
+        if ($mobile === '' || strpos($mobile, 'U') === 0) {
+            return '';
+        }
+        return $mobile;
+    }
+
+    private function hasSettlementPassword(): bool
+    {
+        return trim((string)Db::name('system_config')
+            ->where('config_key', self::SETTLEMENT_PASSWORD_KEY)
+            ->value('config_value')) !== '';
+    }
+
+    private function verifySettlementPassword($password): bool
+    {
+        $password = trim((string)$password);
+        if ($password === '') {
+            return false;
+        }
+
+        $hash = trim((string)Db::name('system_config')
+            ->where('config_key', self::SETTLEMENT_PASSWORD_KEY)
+            ->value('config_value'));
+        if ($hash === '') {
+            return false;
+        }
+
+        return password_verify($password, $hash);
+    }
+
+    private function saveSystemConfigValue(string $key, string $value, string $type = 'text', string $description = ''): void
+    {
+        $exists = Db::name('system_config')->where('config_key', $key)->find();
+        $data = [
+            'config_value' => $value,
+            'config_type' => $type,
+            'config_group' => 'other',
+            'config_title' => $description,
+            'config_desc' => $description,
+            'update_time' => time()
+        ];
+
+        if ($exists) {
+            Db::name('system_config')->where('config_key', $key)->update($data);
+            return;
+        }
+
+        $data['config_key'] = $key;
+        $data['sort_order'] = 0;
+        $data['is_required'] = 0;
+        $data['create_time'] = time();
+        Db::name('system_config')->insert($data);
     }
 
     private function buildRemarkPayload($remark, $iccid, $puk): ?string
@@ -716,9 +933,13 @@ class Orderbatch extends Base
     public function executeBatch()
     {
         try {
+            $this->ensureOrderBatchRemarkColumn();
+            $this->ensureOrderBatchItemSnapshotColumns();
             $operationType = input('post.operation_type', '');
             $targetStatus = input('post.target_status', '');
             $items = input('post.items/a', []);
+            $settlementPassword = input('post.settlement_password', '');
+            $batchRemark = trim((string)input('post.remark', ''));
 
             // 兼容application/json提交，避免大批量数据触发max_input_vars截断
             if (empty($items)) {
@@ -729,8 +950,21 @@ class Orderbatch extends Base
                         $operationType = $jsonData['operation_type'] ?? $operationType;
                         $targetStatus = $jsonData['target_status'] ?? $targetStatus;
                         $items = isset($jsonData['items']) && is_array($jsonData['items']) ? $jsonData['items'] : [];
+                        $settlementPassword = $jsonData['settlement_password'] ?? $settlementPassword;
+                        $batchRemark = trim((string)($jsonData['remark'] ?? $batchRemark));
                     }
                 }
+            }
+            if (mb_strlen($batchRemark, 'UTF-8') > 500) {
+                $batchRemark = mb_substr($batchRemark, 0, 500, 'UTF-8');
+            }
+
+            if (!in_array($operationType, ['mixed', 'status', 'update', 'settlement'], true)) {
+                return json(['code' => 0, 'msg' => '操作类型不正确']);
+            }
+
+            if ($operationType === 'settlement' && (string)$targetStatus === '5' && !$this->verifySettlementPassword($settlementPassword)) {
+                return json(['code' => 0, 'msg' => '导入结算密码不正确或未设置']);
             }
             
             if (empty($items)) {
@@ -744,13 +978,20 @@ class Orderbatch extends Base
                     continue;
                 }
 
-                $parsedTargetStatus = $this->parseImportOrderStatus($item['new_status'] ?? null);
+                $parsedTargetStatus = $operationType === 'settlement'
+                    ? $this->parseSettlementOrderStatus($item['new_status'] ?? null)
+                    : $this->parseImportOrderStatus($item['new_status'] ?? null);
                 if (!$parsedTargetStatus['success']) {
                     return json(['code' => 0, 'msg' => '订单号 ' . $item['order_no'] . ' 的订单状态不正确']);
                 }
                 $newStatus = $parsedTargetStatus['value'];
-                if (($newStatus === null || $newStatus === '') && $operationType === 'status') {
-                    $fallbackStatus = $this->parseImportOrderStatus($targetStatus);
+                if (($newStatus === null || $newStatus === '') && in_array($operationType, ['status', 'settlement'], true)) {
+                    $fallbackStatus = $operationType === 'settlement'
+                        ? $this->parseSettlementOrderStatus($targetStatus)
+                        : $this->parseImportOrderStatus($targetStatus);
+                    if (!$fallbackStatus['success']) {
+                        return json(['code' => 0, 'msg' => $fallbackStatus['message']]);
+                    }
                     $newStatus = $fallbackStatus['value'] ?? null;
                 }
 
@@ -773,6 +1014,8 @@ class Orderbatch extends Base
                     'order_no' => $item['order_no'],
                     'old_status' => $item['current_status'],
                     'new_status' => $newStatus,
+                    'old_jh_time' => $this->normalizeNullableValue($item['current_jh_time'] ?? null),
+                    'new_jh_time' => null,
                     'old_remark' => $oldRemarkPayload,
                     'new_remark' => $newRemarkPayload,
                     'old_production_number' => isset($item['current_production_number']) ? (string)$item['current_production_number'] : '',
@@ -813,6 +1056,7 @@ class Orderbatch extends Base
                     'total_count' => count($batchItems),
                     'success_count' => 0,
                     'fail_count' => 0,
+                    'remark' => $batchRemark,
                     'status' => 0,
                     'create_time' => date('Y-m-d H:i:s')
                 ]);
@@ -829,6 +1073,8 @@ class Orderbatch extends Base
                             'order_no' => $row['order_no'],
                             'old_status' => $row['old_status'],
                             'new_status' => $row['new_status'],
+                            'old_jh_time' => $row['old_jh_time'],
+                            'new_jh_time' => $row['new_jh_time'],
                             'old_remark' => $row['old_remark'],
                             'new_remark' => $row['new_remark'],
                             'old_production_number' => $row['old_production_number'],
@@ -872,6 +1118,7 @@ class Orderbatch extends Base
     public function processBatch()
     {
         try {
+            $this->ensureOrderBatchItemSnapshotColumns();
             $batchId = input('post.batch_id/d', 0);
             $highPerformance = input('post.high_performance/d', 0);
             $limit = input('post.limit/d', $highPerformance ? 100 : 20);
@@ -886,6 +1133,7 @@ class Orderbatch extends Base
             if (!$batch) {
                 return json(['code' => 0, 'msg' => '批次不存在']);
             }
+            $batch = $this->hydrateBatchOperator($batch);
             
             // 更新批次状态为处理中
             if (intval($batch['status']) === 0) {
@@ -908,6 +1156,31 @@ class Orderbatch extends Base
             
             foreach ($items as $item) {
                 try {
+                    if (
+                        ($batch['operation_type'] ?? '') === 'settlement'
+                        && (string)($item['new_status'] ?? '') === '5'
+                    ) {
+                        $currentOrderStatus = Db::name('order')->where('id', $item['order_id'])->value('order_status');
+                        if ((string)($item['old_status'] ?? '') === '5' || (string)$currentOrderStatus === '5') {
+                            Db::name('order_batch_item')->where('id', $item['id'])->update([
+                                'execute_status' => 2,
+                                'fail_reason' => '订单已结算，已跳过重复结算',
+                                'execute_time' => date('Y-m-d H:i:s')
+                            ]);
+                            $failCount++;
+                            if (!$highPerformance) {
+                                $results[] = [
+                                    'index' => $item['id'],
+                                    'order_id' => $item['order_id'],
+                                    'order_no' => $item['order_no'],
+                                    'status' => 'fail',
+                                    'message' => '订单已结算，已跳过重复结算'
+                                ];
+                            }
+                            continue;
+                        }
+                    }
+
                     $updateData = [];
                     
                     // 根据操作类型准备更新数据
@@ -939,17 +1212,19 @@ class Orderbatch extends Base
                     }
                     
                     if (!empty($updateData)) {
+                        $newJhTime = null;
                         // 状态变为已激活时，设置激活时间
                         if (isset($updateData['order_status']) && $updateData['order_status'] == '4' && $item['old_status'] != '4') {
                             // 查询当前jh_time，有值不覆盖
                             $currentJhTime = Db::name('order')->where('id', $item['order_id'])->value('jh_time');
                             if (empty($currentJhTime)) {
-                                $updateData['jh_time'] = date('Y-m-d H:i:s');
+                                $newJhTime = date('Y-m-d H:i:s');
+                                $updateData['jh_time'] = $newJhTime;
                             }
                         }
                         
-                        // 状态变为已结算时，设置结算时间
-                        if (isset($updateData['order_status']) && $updateData['order_status'] == '5' && $item['old_status'] != '5') {
+                        // 佣金结算批次状态变为已结算时，设置结算时间
+                        if (($batch['operation_type'] ?? '') === 'settlement' && isset($updateData['order_status']) && $updateData['order_status'] == '5' && $item['old_status'] != '5') {
                             $updateData['js_time'] = date('Y-m-d H:i:s');
                         }
                         
@@ -957,15 +1232,19 @@ class Orderbatch extends Base
                         
                         // 更新订单
                         Db::name('order')->where('id', $item['order_id'])->update($updateData);
+                        if ($newJhTime !== null) {
+                            Db::name('order_batch_item')->where('id', $item['id'])->update([
+                                'new_jh_time' => $newJhTime
+                            ]);
+                        }
                         
-                        // 如果状态变更为已激活或已结算，且原状态不是该状态，触发佣金处理
-                        // OrderCommissionService 内部有去重逻辑，会检查是否已有记录
-                        if (isset($updateData['order_status']) && in_array($updateData['order_status'], ['4', '5'])) {
+                        // 佣金结算已拆分到独立页面，只有结算批次才触发佣金处理。
+                        if (($batch['operation_type'] ?? '') === 'settlement' && isset($updateData['order_status']) && $updateData['order_status'] == '5') {
                             $oldStatus = $item['old_status'] ?? '';
                             $newStatus = $updateData['order_status'];
                             
                             // 只有状态真正发生变化时才处理佣金
-                            if (($newStatus == '4' && $oldStatus != '4') || ($newStatus == '5' && $oldStatus != '5')) {
+                            if ($newStatus == '5' && $oldStatus != '5') {
                                 // 付费卡补齐：批量导入触发结算前，确保溢价结算所需数据存在
                                 $orderForSettlement = Db::name('order')
                                     ->where('id', $item['order_id'])
@@ -1067,9 +1346,11 @@ class Orderbatch extends Base
                 }
             }
             
-            // 更新批次统计
-            Db::name('order_batch')->where('id', $batchId)->inc('success_count', $successCount);
-            Db::name('order_batch')->where('id', $batchId)->inc('fail_count', $failCount);
+            // 更新批次统计。inc() 需要配合 update() 才会真正落库。
+            Db::name('order_batch')->where('id', $batchId)->update([
+                'success_count' => Db::raw('success_count + ' . (int)$successCount),
+                'fail_count' => Db::raw('fail_count + ' . (int)$failCount)
+            ]);
             
             // 检查是否全部处理完成
             $pendingCount = Db::name('order_batch_item')
@@ -1117,12 +1398,90 @@ class Orderbatch extends Base
         }
     }
 
+    public function getSettlementPasswordStatus()
+    {
+        try {
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'has_password' => $this->hasSettlementPassword() ? 1 : 0
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => '获取失败：' . $e->getMessage()]);
+        }
+    }
+
+    public function saveSettlementPassword()
+    {
+        try {
+            $oldPassword = trim((string)input('post.old_password', ''));
+            $password = trim((string)input('post.password', ''));
+            $confirmPassword = trim((string)input('post.confirm_password', ''));
+            if ($this->hasSettlementPassword() && !$this->verifySettlementPassword($oldPassword)) {
+                return json(['code' => 0, 'msg' => '原导入结算密码不正确']);
+            }
+            if ($password === '') {
+                return json(['code' => 0, 'msg' => '请输入新的导入结算密码']);
+            }
+            if (mb_strlen($password) < 6) {
+                return json(['code' => 0, 'msg' => '导入结算密码至少 6 位']);
+            }
+            if ($password !== $confirmPassword) {
+                return json(['code' => 0, 'msg' => '两次输入的密码不一致']);
+            }
+
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $this->saveSystemConfigValue(self::SETTLEMENT_PASSWORD_KEY, $hash, 'password', '导入结算密码');
+
+            return json(['code' => 1, 'msg' => '导入结算密码已保存']);
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => '保存失败：' . $e->getMessage()]);
+        }
+    }
+
+    public function markSettlementFailed()
+    {
+        try {
+            $orderId = input('post.order_id/d', 0);
+            $reason = trim((string)input('post.reason', ''));
+            if ($orderId <= 0) {
+                return json(['code' => 0, 'msg' => '缺少订单ID']);
+            }
+            if ($reason === '') {
+                return json(['code' => 0, 'msg' => '请输入失败原因']);
+            }
+
+            $order = Db::name('order')->where('id', $orderId)->find();
+            if (!$order) {
+                return json(['code' => 0, 'msg' => '订单不存在']);
+            }
+            if ((string)($order['order_status'] ?? '') === '5') {
+                return json(['code' => 0, 'msg' => '已结算订单不能标记为结算失败']);
+            }
+
+            $remark = trim((string)($order['remark'] ?? ''));
+            $failedRemark = '结算失败原因：' . $reason;
+            Db::name('order')->where('id', $orderId)->update([
+                'order_status' => '6',
+                'remark' => $remark === '' ? $failedRemark : ($remark . "\n" . $failedRemark),
+                'update_time' => date('Y-m-d H:i:s')
+            ]);
+
+            return json(['code' => 1, 'msg' => '已标记为结算失败']);
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => '操作失败：' . $e->getMessage()]);
+        }
+    }
+
     /**
      * 撤回批次操作
      */
     public function rollbackBatch()
     {
         try {
+            $this->ensureOrderBatchItemSnapshotColumns();
             $batchId = input('post.batch_id/d', 0);
             
             if (empty($batchId)) {
@@ -1137,6 +1496,18 @@ class Orderbatch extends Base
             
             if ($batch['status'] == 2) {
                 return json(['code' => 0, 'msg' => '该批次已撤回']);
+            }
+
+            if ((int)($batch['status'] ?? 0) !== 1) {
+                return json(['code' => 0, 'msg' => '批次尚未完成，不能撤回']);
+            }
+
+            $pendingItemCount = Db::name('order_batch_item')
+                ->where('batch_id', $batchId)
+                ->where('execute_status', 0)
+                ->count();
+            if ($pendingItemCount > 0) {
+                return json(['code' => 0, 'msg' => '批次仍有订单未处理完成，不能撤回']);
             }
             
             Db::startTrans();
@@ -1159,10 +1530,14 @@ class Orderbatch extends Base
                     if ($item['old_status'] !== null && $item['new_status'] !== null) {
                         $updateData['order_status'] = $item['old_status'];
                         
-                        // 如果从已激活(4)或已结算(5)撤回，需要删除佣金记录
+                        // 状态激活/结算产生的资金记录需要在撤回时作废；已结算批次还需要扣回余额。
                         if (in_array($item['new_status'], [4, 5, '4', '5'])) {
                             $needRollbackCommission = true;
                         }
+                    }
+
+                    if (array_key_exists('new_jh_time', $item) && $item['new_jh_time'] !== null && $item['new_jh_time'] !== '') {
+                        $updateData['jh_time'] = $item['old_jh_time'] !== null ? $item['old_jh_time'] : null;
                     }
                     
                     // 恢复原备注
@@ -1204,63 +1579,58 @@ class Orderbatch extends Base
                     
                     // 撤销佣金记录
                     if ($needRollbackCommission) {
-                        // 如果是已结算订单，需要先扣减余额，再标记记录为作废
-                        if ($item['new_status'] == '5' || $item['new_status'] == 5) {
+                        // 如果是已结算批次，需要先扣减余额，再标记记录为作废
+                        if (($batch['operation_type'] ?? '') === 'settlement' && ($item['new_status'] == '5' || $item['new_status'] == 5)) {
                             // 查询该订单的所有已结算佣金记录（有效的）
                             $balanceLogs = Db::name('agent_balance_logs')
                                 ->where('order_id', $item['order_id'])
                                 ->where('type', 'in')
                                 ->where('status', 1)
-                                ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
+                                ->whereIn('sub_type', ['order', 'parent', 'secret_price', 'markup'])
                                 ->select();
                             
                             if ($balanceLogs) {
-                                // 扣减各级代理的余额，并记录撤回操作
+                                // 扣减各级代理余额，并作废本批次产生的佣金流水。撤回不新增有效流水，避免资金变动出现反向记录。
                                 foreach ($balanceLogs as $log) {
                                     if ($log['amount'] > 0) {
                                         // 获取代理当前余额
                                         $agent = Db::name('agents')->where('id', $log['agent_id'])->find();
                                         if ($agent) {
-                                            $balanceBefore = $agent['balance'];
-                                            $balanceAfter = $balanceBefore - $log['amount'];
-                                            
                                             // 扣减余额
+                                            $amount = (float)$log['amount'];
                                             Db::name('agents')
                                                 ->where('id', $log['agent_id'])
-                                                ->dec('balance', $log['amount'])
-                                                ->update();
-                                            
-                                            // 记录撤回操作到余额变动表
-                                            Db::name('agent_balance_logs')->insert([
-                                                'agent_id' => $log['agent_id'],
-                                                'order_id' => $item['order_id'],
-                                                'order_no' => $item['order_no'],
-                                                'type' => 'out',
-                                                'sub_type' => 'manual',
-                                                'amount' => $log['amount'],
-                                                'balance_before' => $balanceBefore,
-                                                'balance_after' => $balanceAfter,
-                                                'remark' => '批次撤回：批次ID#' . $batchId . '，原' . $this->getSubTypeName($log['sub_type']) . '撤销',
-                                                'status' => 1,
-                                                'create_time' => time()
-                                            ]);
+                                                ->update([
+                                                    'balance' => Db::raw('balance - ' . $amount),
+                                                    'total_money' => Db::raw('GREATEST(total_money - ' . $amount . ', 0)')
+                                                ]);
                                         }
                                     }
                                     
                                     // 将原记录标记为作废
                                     Db::name('agent_balance_logs')
                                         ->where('id', $log['id'])
-                                        ->update(['status' => 0]);
+                                        ->update([
+                                            'status' => 0,
+                                            'remark' => trim((string)($log['remark'] ?? '')) . '（批次撤回已作废）'
+                                        ]);
                                 }
                             }
                         }
                         
-                        // 删除或标记待结算记录为作废
-                        Db::name('agent_balance_logs')
+                        // 删除或标记待结算记录为作废。普通激活批次只处理本批次激活后生成的记录，避免误伤历史记录。
+                        $pendingLogQuery = Db::name('agent_balance_logs')
                             ->where('order_id', $item['order_id'])
                             ->where('type', 'pending')
-                            ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
-                            ->update(['status' => 0]);
+                            ->whereIn('sub_type', ['order', 'parent', 'secret_price', 'markup']);
+                        if (($batch['operation_type'] ?? '') !== 'settlement') {
+                            if (empty($item['new_jh_time'])) {
+                                $pendingLogQuery->whereRaw('1=0');
+                            } else {
+                                $pendingLogQuery->where('create_time', '>=', strtotime((string)$item['new_jh_time']));
+                            }
+                        }
+                        $pendingLogQuery->update(['status' => 0]);
                         
                         $commissionRollbackCount++;
                     }
@@ -1303,6 +1673,8 @@ class Orderbatch extends Base
     public function getBatchDetail()
     {
         try {
+            $this->ensureOrderBatchRemarkColumn();
+            $this->ensureOrderBatchItemSnapshotColumns();
             $batchId = input('post.batch_id/d', 0);
             
             if (empty($batchId)) {
@@ -1341,16 +1713,69 @@ class Orderbatch extends Base
     public function getBatchList()
     {
         try {
+            $this->ensureOrderBatchRemarkColumn();
             $page = input('page', 1);
             $limit = input('limit', 15);
-            
-            $count = Db::name('order_batch')->count();
-            
-            $list = Db::name('order_batch')
+            $mode = trim((string)input('mode', ''));
+            $keyword = trim((string)input('keyword', ''));
+            $status = trim((string)input('status', ''));
+            $settlementDateRange = trim((string)input('settlement_date_range', ''));
+
+            $query = Db::name('order_batch');
+            if ($mode === 'settlement') {
+                $query->where(function ($subQuery) {
+                    $subQuery
+                        ->where('operation_type', 'settlement')
+                        ->whereOr(function ($legacyQuery) {
+                            $legacyQuery->where('operation_type', 'status')->whereIn('target_status', ['5', '6']);
+                        });
+                });
+            } elseif ($mode === 'update') {
+                $query->where(function ($subQuery) {
+                    $subQuery
+                        ->whereNotIn('operation_type', ['status', 'settlement'])
+                        ->whereOr(function ($statusQuery) {
+                            $statusQuery->where('operation_type', 'status')->whereNotIn('target_status', ['5', '6']);
+                        });
+                });
+            }
+
+            if ($keyword !== '') {
+                $adminIds = Db::name('admins')
+                    ->whereLike('username|nickname', '%' . $keyword . '%')
+                    ->column('id');
+                $query->where(function ($subQuery) use ($keyword, $adminIds) {
+                    $subQuery->whereLike('batch_no|admin_name', '%' . $keyword . '%');
+                    if (!empty($adminIds)) {
+                        $subQuery->whereOr('admin_id', 'in', $adminIds);
+                    }
+                });
+            }
+            if ($status !== '') {
+                $query->where('status', (int)$status);
+            }
+            if ($settlementDateRange !== '') {
+                $dates = explode(' - ', $settlementDateRange);
+                if (count($dates) === 2) {
+                    $query->whereBetweenTime('finish_time', $dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59');
+                }
+            }
+
+            $count = (clone $query)->count();
+
+            $list = $query
                 ->order('id', 'desc')
                 ->page($page, $limit)
                 ->select()
                 ->toArray();
+
+            foreach ($list as &$item) {
+                $item = $this->hydrateBatchOperator($item);
+                if ($mode === 'settlement') {
+                    $item = $this->hydrateBatchSettlementAmount($item);
+                }
+            }
+            unset($item);
             
             return json([
                 'code' => 0,
@@ -1362,6 +1787,203 @@ class Orderbatch extends Base
         } catch (\Exception $e) {
             return json(['code' => 1, 'msg' => '获取失败：' . $e->getMessage()]);
         }
+    }
+
+    private function hydrateBatchOperator(array $batch): array
+    {
+        $adminId = (int)($batch['admin_id'] ?? 0);
+        $operatorName = trim((string)($batch['admin_name'] ?? ''));
+
+        if ($adminId > 0) {
+            try {
+                $admin = Db::name('admins')
+                    ->where('id', $adminId)
+                    ->field('username,nickname')
+                    ->find();
+                if ($admin) {
+                    $nickname = trim((string)($admin['nickname'] ?? ''));
+                    $username = trim((string)($admin['username'] ?? ''));
+                    $operatorName = $nickname !== '' ? $nickname : $username;
+                }
+            } catch (\Throwable $e) {
+                // 兼容后续角色/管理员表结构调整失败时，保留批次快照名称
+            }
+        }
+
+        $batch['operator_name'] = $operatorName !== '' ? $operatorName : '未记录';
+        $pendingItemCount = Db::name('order_batch_item')
+            ->where('batch_id', (int)($batch['id'] ?? 0))
+            ->where('execute_status', 0)
+            ->count();
+        $batch['can_rollback'] = ((int)($batch['status'] ?? 0) === 1 && (int)$pendingItemCount === 0) ? 1 : 0;
+        return $batch;
+    }
+
+    private function hydrateBatchSettlementAmount(array $batch): array
+    {
+        $amount = 0.0;
+        if ((int)($batch['status'] ?? 0) !== 2) {
+            $amount = (float)(Db::name('order_batch_item')
+                ->alias('bi')
+                ->leftJoin('order o', 'bi.order_id = o.id')
+                ->where('batch_id', (int)($batch['id'] ?? 0))
+                ->where('bi.execute_status', 1)
+                ->where('bi.new_status', '5')
+                ->where('bi.old_status', '<>', '5')
+                ->sum('o.commission') ?: 0);
+        }
+
+        $batch['settlement_amount'] = number_format($amount, 2, '.', '');
+        $batch['settlement_amount_text'] = '¥' . number_format($amount, 2);
+        return $batch;
+    }
+
+    private function ensureOrderBatchRemarkColumn(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+
+        try {
+            $columns = Db::query("SHOW COLUMNS FROM `order_batch` LIKE 'remark'");
+            if (empty($columns)) {
+                Db::execute("ALTER TABLE `order_batch` ADD COLUMN `remark` varchar(500) NULL DEFAULT '' COMMENT '批次备注' AFTER `fail_count`");
+            }
+        } catch (\Throwable $e) {
+            // 字段兼容失败时交给实际读写报错，便于暴露数据库权限或结构问题。
+        }
+
+        $checked = true;
+    }
+
+    private function ensureOrderBatchItemSnapshotColumns(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+
+        try {
+            $oldJhTime = Db::query("SHOW COLUMNS FROM `order_batch_item` LIKE 'old_jh_time'");
+            if (empty($oldJhTime)) {
+                Db::execute("ALTER TABLE `order_batch_item` ADD COLUMN `old_jh_time` datetime NULL DEFAULT NULL COMMENT '原激活时间' AFTER `new_status`");
+            }
+
+            $newJhTime = Db::query("SHOW COLUMNS FROM `order_batch_item` LIKE 'new_jh_time'");
+            if (empty($newJhTime)) {
+                Db::execute("ALTER TABLE `order_batch_item` ADD COLUMN `new_jh_time` datetime NULL DEFAULT NULL COMMENT '本批次写入激活时间' AFTER `old_jh_time`");
+            }
+        } catch (\Throwable $e) {
+            // 字段兼容失败时交给实际读写报错，便于暴露数据库权限或结构问题。
+        }
+
+        $checked = true;
+    }
+
+    /**
+     * 下载佣金结算单
+     */
+    public function downloadSettlementStatement()
+    {
+        try {
+            $this->ensureOrderBatchRemarkColumn();
+            $batchId = input('batch_id/d', 0);
+            if (empty($batchId)) {
+                return json(['code' => 0, 'msg' => '缺少批次ID']);
+            }
+
+            $batch = Db::name('order_batch')->where('id', $batchId)->find();
+            if (!$batch) {
+                return json(['code' => 0, 'msg' => '批次不存在']);
+            }
+            $isSettlementBatch = (string)($batch['operation_type'] ?? '') === 'settlement'
+                || ((string)($batch['operation_type'] ?? '') === 'status' && (string)($batch['target_status'] ?? '') === '5');
+            if (!$isSettlementBatch) {
+                return json(['code' => 0, 'msg' => '该批次不是佣金结算批次']);
+            }
+
+            $items = Db::name('order_batch_item')
+                ->alias('bi')
+                ->leftJoin('order o', 'bi.order_id = o.id')
+                ->field('bi.*, o.up_order_no, o.customer_name, o.phone, o.product_id, o.product_name, o.commission')
+                ->where('bi.batch_id', $batchId)
+                ->order('bi.id', 'asc')
+                ->select()
+                ->toArray();
+
+            $filename = '佣金结算单_' . ($batch['batch_no'] ?? $batchId) . '_' . date('YmdHis') . '.csv';
+            $asciiFilename = 'commission_statement_' . ($batch['batch_no'] ?? $batchId) . '_' . date('YmdHis') . '.csv';
+
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            header('Content-Type: text/csv; charset=UTF-8');
+            header("Content-Disposition: attachment; filename=\"{$asciiFilename}\"; filename*=UTF-8''" . rawurlencode($filename));
+            header('Cache-Control: max-age=0');
+            header('Pragma: public');
+
+            $output = fopen('php://output', 'w');
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, ['批次号', '批次备注', '订单号', '上游订单号', '客户姓名', '手机号', '原状态', '新状态', '执行结果', '佣金金额', '失败原因', '执行时间']);
+
+            foreach ($items as $item) {
+                $commissionAmount = ((int)($item['execute_status'] ?? 0) === 1 && (string)($item['new_status'] ?? '') === '5' && (string)($item['old_status'] ?? '') !== '5')
+                    ? (float)($item['commission'] ?? 0)
+                    : 0.0;
+
+                fputcsv($output, [
+                    $batch['batch_no'] ?? '',
+                    $batch['remark'] ?? '',
+                    $item['order_no'] ?? '',
+                    $item['up_order_no'] ?? '',
+                    $item['customer_name'] ?? '',
+                    $item['phone'] ?? '',
+                    $this->getStatusText($item['old_status'] ?? ''),
+                    $this->getStatusText($item['new_status'] ?? ''),
+                    $this->getBatchItemStatusText($item['execute_status'] ?? 0),
+                    number_format((float)$commissionAmount, 2, '.', ''),
+                    $item['fail_reason'] ?? '',
+                    $item['execute_time'] ?? '',
+                ]);
+            }
+
+            fclose($output);
+            exit;
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => '下载失败：' . $e->getMessage()]);
+        }
+    }
+
+    private function getBatchItemStatusText($status): string
+    {
+        if ((int)$status === 1) {
+            return '成功';
+        }
+        if ((int)$status === 2) {
+            return '失败';
+        }
+        if ((int)$status === 3) {
+            return '已撤回';
+        }
+        return '待处理';
+    }
+
+    private function getStatusText($status): string
+    {
+        $map = [
+            '0' => '已提交',
+            '1' => '待发货',
+            '2' => '已发货',
+            '3' => '待传照片',
+            '4' => '已激活',
+            '5' => '已结算',
+            '6' => '结算失败',
+            '7' => '审核失败',
+        ];
+        $key = (string)$status;
+        return $map[$key] ?? $key;
     }
 }
 

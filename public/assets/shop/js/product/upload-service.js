@@ -43,6 +43,42 @@
         }
     }
 
+    function getUploadLimit() {
+        if (win.API_TYPE === 1003) {
+            return {
+                maxSize: 2 * 1024 * 1024,
+                sizeMsg: '2MB'
+            };
+        }
+        return {
+            maxSize: 5 * 1024 * 1024,
+            sizeMsg: '5MB'
+        };
+    }
+
+    function getCompressionOptions(type) {
+        var isFace = type === 'id_card_face';
+        if (win.API_TYPE === 1003) {
+            return {
+                targetMaxSize: 900 * 1024,
+                initialMaxEdge: isFace ? 1500 : 1700,
+                initialQuality: isFace ? 0.76 : 0.8,
+                minEdge: isFace ? 1080 : 1280,
+                minQuality: isFace ? 0.58 : 0.62,
+                maxAttempts: 6
+            };
+        }
+
+        return {
+            targetMaxSize: 1536 * 1024,
+            initialMaxEdge: isFace ? 1500 : 1700,
+            initialQuality: isFace ? 0.76 : 0.8,
+            minEdge: isFace ? 1080 : 1280,
+            minQuality: isFace ? 0.58 : 0.62,
+            maxAttempts: 6
+        };
+    }
+
     function handleImageUpload(input, type) {
         var file = input.files[0];
         if (!file) {
@@ -54,18 +90,14 @@
             return;
         }
 
-        var maxSize = 5 * 1024 * 1024;
-        var sizeMsg = '5MB';
-        if (win.API_TYPE === 1003) {
-            maxSize = 2 * 1024 * 1024;
-            sizeMsg = '2MB';
-        }
-
-        if (file.size > maxSize) {
-            layer.msg('图片大小不能超过' + sizeMsg, { icon: 2 });
+        if (file.size > 20 * 1024 * 1024) {
+            layer.msg('图片原始体积不能超过20MB', { icon: 2 });
             return;
         }
 
+        var uploadLimit = getUploadLimit();
+        var maxSize = uploadLimit.maxSize;
+        var sizeMsg = uploadLimit.sizeMsg;
         var meta = getUploadMeta(type);
         if (!meta) {
             layer.msg('上传类型错误', { icon: 2 });
@@ -76,7 +108,7 @@
         var previewWrap = document.getElementById(meta.prefix + 'Preview');
         var uploadBtn = document.getElementById(meta.buttonId);
         if (uploadBtn) {
-            uploadBtn.textContent = '上传中...';
+            uploadBtn.textContent = file.size > maxSize ? '压缩中...' : '上传中...';
             uploadBtn.style.pointerEvents = 'none';
         }
 
@@ -117,6 +149,9 @@
         }
 
         var continueUpload = function () {
+            if (uploadBtn) {
+                uploadBtn.textContent = '上传中...';
+            }
             var formData = new FormData();
             formData.append('file', uploadFile);
             formData.append('path', 'shop/idcard/' + type);
@@ -169,9 +204,17 @@
 
         compressImageForUpload(file, type, function (compressedFile) {
             uploadFile = compressedFile || file;
+            if (uploadFile.size > maxSize) {
+                doneError('图片压缩后仍超过' + sizeMsg + '，请更换更清晰但体积更小的图片');
+                return;
+            }
             continueUpload();
         }, function () {
             uploadFile = file;
+            if (uploadFile.size > maxSize) {
+                doneError('图片压缩失败，且原图超过' + sizeMsg + '限制');
+                return;
+            }
             continueUpload();
         });
     }
@@ -223,39 +266,68 @@
                 var img = new Image();
                 img.onload = function () {
                     try {
-                        var maxEdge = type === 'id_card_face' ? 1600 : 1800;
-                        var quality = type === 'id_card_face' ? 0.78 : 0.82;
-                        var width = img.width;
-                        var height = img.height;
+                        var uploadLimit = getUploadLimit();
+                        var compressionOptions = getCompressionOptions(type);
+                        var targetMaxSize = Math.min(
+                            Math.floor(uploadLimit.maxSize * 0.92),
+                            compressionOptions.targetMaxSize
+                        );
+                        var maxEdge = compressionOptions.initialMaxEdge;
+                        var quality = compressionOptions.initialQuality;
+                        var attempts = 0;
 
-                        if (width > maxEdge || height > maxEdge) {
-                            if (width > height) {
-                                height = Math.round(height * (maxEdge / width));
-                                width = maxEdge;
-                            } else {
-                                width = Math.round(width * (maxEdge / height));
-                                height = maxEdge;
+                        function scaleSize(sourceWidth, sourceHeight, targetEdge) {
+                            var nextWidth = sourceWidth;
+                            var nextHeight = sourceHeight;
+                            if (nextWidth > targetEdge || nextHeight > targetEdge) {
+                                if (nextWidth > nextHeight) {
+                                    nextHeight = Math.round(nextHeight * (targetEdge / nextWidth));
+                                    nextWidth = targetEdge;
+                                } else {
+                                    nextWidth = Math.round(nextWidth * (targetEdge / nextHeight));
+                                    nextHeight = targetEdge;
+                                }
                             }
+                            return {
+                                width: Math.max(nextWidth, 1),
+                                height: Math.max(nextHeight, 1)
+                            };
                         }
 
-                        var canvas = document.createElement('canvas');
-                        canvas.width = width;
-                        canvas.height = height;
-                        var ctx = canvas.getContext('2d');
-                        if (!ctx) {
-                            finishOk(file);
-                            return;
-                        }
-
-                        ctx.drawImage(img, 0, 0, width, height);
-                        canvas.toBlob(function (blob) {
-                            if (!blob) {
+                        function renderNext(currentEdge, currentQuality) {
+                            var size = scaleSize(img.width, img.height, currentEdge);
+                            var canvas = document.createElement('canvas');
+                            canvas.width = size.width;
+                            canvas.height = size.height;
+                            var ctx = canvas.getContext('2d');
+                            if (!ctx) {
                                 finishOk(file);
                                 return;
                             }
-                            var compressed = new File([blob], file.name, { type: 'image/jpeg' });
-                            finishOk(compressed.size < file.size ? compressed : file);
-                        }, 'image/jpeg', quality);
+
+                            ctx.drawImage(img, 0, 0, size.width, size.height);
+                            canvas.toBlob(function (blob) {
+                                if (!blob) {
+                                    finishOk(file);
+                                    return;
+                                }
+
+                                var compressed = new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+                                attempts++;
+
+                                if (compressed.size <= targetMaxSize || attempts >= compressionOptions.maxAttempts) {
+                                    finishOk(compressed.size < file.size ? compressed : file);
+                                    return;
+                                }
+
+                                renderNext(
+                                    Math.max(Math.round(currentEdge * 0.88), compressionOptions.minEdge),
+                                    Math.max(currentQuality - 0.06, compressionOptions.minQuality)
+                                );
+                            }, 'image/jpeg', currentQuality);
+                        }
+
+                        renderNext(maxEdge, quality);
                     } catch (err) {
                         finishFail(err);
                     }

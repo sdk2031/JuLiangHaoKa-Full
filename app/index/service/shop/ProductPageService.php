@@ -8,6 +8,7 @@ use app\common\service\FeaturePolicyService;
 use app\common\helper\ImageHelper;
 use app\common\service\ImageTemplateService;
 use app\common\service\MarkupSettlementService;
+use app\common\service\payment\PaymentConfigService;
 
 class ProductPageService
 {
@@ -131,6 +132,7 @@ class ProductPageService
     private function getEnabledCheckoutPaymentMethods(): array
     {
         try {
+            PaymentConfigService::ensureCorePaymentDefinitions();
             $rows = Db::table('payment_methods')
                 ->where('is_enabled', 1)
                 ->order('sort_order', 'asc')
@@ -175,11 +177,37 @@ class ProductPageService
     public function enrichProductForShop(array $shop, array $product)
     {
         $product = $this->applyPaidCardPricing($shop['agent_id'], $product);
+        $product['product_type'] = $this->normalizeProductType($product);
+        $product['product_type_text'] = $this->productTypeText($product['product_type']);
         $product['product_image'] = ImageHelper::processProductImage($product['product_image'] ?? '');
         $product['display_image'] = ImageTemplateService::getDisplayImage($product);
         $product['processed_tags'] = $this->processProductTags($product['tags'] ?? '');
+        $product['card_price_note'] = trim((string)($product['card_price_note'] ?? ''));
+        $product['card_price_user_note'] = trim((string)($product['card_price_user_note'] ?? ''));
+        $product['card_price_text'] = trim((string)($product['card_price_text'] ?? ''));
 
         return $product;
+    }
+
+    private function normalizeProductType(array $row): string
+    {
+        $type = trim((string)($row['product_type'] ?? ''));
+        if (in_array($type, ['flow_card', 'broadband', 'combo'], true)) {
+            return $type;
+        }
+
+        return intval($row['product_category'] ?? 0) === 1 ? 'broadband' : 'flow_card';
+    }
+
+    private function productTypeText(string $type): string
+    {
+        $map = [
+            'flow_card' => '流量卡',
+            'broadband' => '宽带',
+            'combo' => '融合套餐',
+        ];
+
+        return $map[$type] ?? '流量卡';
     }
 
     public function applyPaidCardPricing($agentId, array $product)

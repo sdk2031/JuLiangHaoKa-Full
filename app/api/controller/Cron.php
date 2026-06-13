@@ -2,6 +2,7 @@
 namespace app\api\controller;
 
 use think\facade\Db;
+use think\facade\Cache;
 use app\common\service\ImageTemplateService;
 use app\common\service\CloudExportService;
 
@@ -48,6 +49,133 @@ class Cron
         }
     }
 
+    private function getProductSyncCategoryId($config)
+    {
+        if (empty($config['extra_config'])) {
+            return 0;
+        }
+
+        $extra = json_decode((string)$config['extra_config'], true);
+        if (!is_array($extra)) {
+            return 0;
+        }
+
+        return intval($extra['product_sync_category_id'] ?? 0);
+    }
+
+    private function mergePostData($data)
+    {
+        foreach ($data as $key => $value) {
+            $_POST[$key] = $value;
+            $_REQUEST[$key] = $value;
+        }
+        request()->withPost(array_merge(request()->post(), $data));
+    }
+
+    private function withProductSyncCategoryPost($categoryId)
+    {
+        $categoryId = intval($categoryId);
+        if ($categoryId <= 0) {
+            return;
+        }
+
+        $this->mergePostData(array('category_id' => $categoryId));
+    }
+
+    private function appendProductSyncCategoryResult($apiType, $configId, $result, $categoryId)
+    {
+        $categoryId = intval($categoryId);
+        if ($categoryId <= 0) {
+            return $result;
+        }
+
+        $count = $this->applyProductSyncCategory($apiType, $configId, $categoryId);
+        if ($count > 0) {
+            $result .= "，归类 {$count} 个";
+        }
+        return $result;
+    }
+
+    private function applyProductSyncCategory($apiType, $configId, $categoryId)
+    {
+        $categoryId = intval($categoryId);
+        if ($categoryId <= 0 || !$this->tableColumnExists('product', 'category_id')) {
+            return 0;
+        }
+
+        $updateData = array(
+            'category_id' => $categoryId,
+            'update_time' => date('Y-m-d H:i:s'),
+        );
+        $count = 0;
+        $configId = intval($configId);
+
+        if ($configId > 0) {
+            $count += intval(Db::name('product')
+                ->where('api_config_id', $configId)
+                ->update($updateData));
+        }
+
+        $names = $this->getProductApiNames($apiType);
+        if (!empty($names) && ($configId <= 0 || !$this->isMultiConfigType($apiType))) {
+            $query = Db::name('product')->whereIn('api_name', $names);
+            if ($configId > 0) {
+                $query->where(function ($q) {
+                    $q->where('api_config_id', 0)->whereOr('api_config_id', null);
+                });
+            }
+            $count += intval($query->update($updateData));
+        }
+
+        if ($count > 0) {
+            $this->clearProductCaches();
+        }
+        return $count;
+    }
+
+    private function getProductApiNames($apiType)
+    {
+        $names = array(
+            'hao172' => array('172号卡'),
+            'mf58' => array('58秒返'),
+            'lanchang' => array('蓝畅速享', '蓝畅'),
+            'haoteam' => array('号卡极团'),
+            'haoky' => array('卡业联盟'),
+            'haoy' => array('号易'),
+            'tiancheng' => array('天城智控'),
+            'longbao' => array('龙宝', '龙宝API'),
+            'jikeyun' => array('极客云'),
+            'guangmengyun' => array('广梦云'),
+            'gchk' => array('共创号卡'),
+            'jlcloud' => array('巨量互联'),
+            'gth91' => array('91敢探号'),
+        );
+        return isset($names[$apiType]) ? $names[$apiType] : array();
+    }
+
+    private function isMultiConfigType($apiType)
+    {
+        return in_array($apiType, array('haoteam', 'jikeyun', 'guangmengyun', 'jlcloud'), true);
+    }
+
+    private function tableColumnExists($table, $column)
+    {
+        $table = str_replace('`', '', (string)$table);
+        $column = str_replace('`', '', (string)$column);
+        try {
+            return !empty(Db::query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'"));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function clearProductCaches()
+    {
+        $now = time();
+        Cache::set('shop_products_cache_version', $now, 0);
+        Cache::set('open_product_cache_version', $now, 0);
+    }
+
     /**
      * 统一调度入口
      */
@@ -63,6 +191,7 @@ class Cron
         $debug = input('debug', 0);
         $debugInfo = array();
         $pendingTasks = array();
+        $statusItems = array();
 
         ignore_user_abort(true);
         set_time_limit(0);
@@ -152,6 +281,11 @@ class Cron
                 $debugInfo = array_merge($debugInfo, $callbackSyncResults['debug']);
                 $pendingTasks = array_merge($pendingTasks, $callbackSyncResults['pending_tasks']);
             }
+            if (!empty($callbackSyncResults['status'])) {
+                foreach ($callbackSyncResults['status'] as $item) {
+                    $statusItems[] = $item;
+                }
+            }
         } catch (\Exception $e) {
             $results[] = array(
                 'api' => 'WPS补偿回传',
@@ -175,6 +309,46 @@ class Cron
                 'api' => '云账户',
                 'task' => 'payout_retry',
                 'result' => '打款重试失败: ' . $e->getMessage()
+            );
+        }
+
+        // 每分钟收敛云账户/支付宝处理中打款结果，避免回调未到时长期停在打款中
+        try {
+            $payoutQueryResult = $this->runPayoutProcessingQueryTask();
+            $this->writePayoutQueryLog('payout_query_processing', $payoutQueryResult);
+            if (($payoutQueryResult['total'] ?? 0) > 0) {
+                $results[] = array(
+                    'api' => '云账户',
+                    'task' => 'payout_query_processing',
+                    'result' => "查询 {$payoutQueryResult['total']} 笔，成功 {$payoutQueryResult['success']} 笔，失败 {$payoutQueryResult['failed']} 笔，处理中 {$payoutQueryResult['processing']} 笔，查单失败 " . ($payoutQueryResult['query_fail'] ?? 0) . " 笔"
+                );
+            }
+        } catch (\Exception $e) {
+            $this->writePayoutQueryLog('payout_query_processing_error', array(
+                'error' => $e->getMessage()
+            ));
+            $results[] = array(
+                'api' => '云账户',
+                'task' => 'payout_query_processing',
+                'result' => '打款查单失败: ' . $e->getMessage()
+            );
+        }
+
+        // 清理超过48小时的订单导出文件和记录
+        try {
+            $exportCleanupResult = $this->runOrderExportCleanup(48);
+            if ($exportCleanupResult['job_deleted'] > 0 || $exportCleanupResult['file_deleted'] > 0) {
+                $results[] = array(
+                    'api' => '系统',
+                    'task' => 'order_export_cleanup',
+                    'result' => "清理导出记录 {$exportCleanupResult['job_deleted']} 条，文件 {$exportCleanupResult['file_deleted']} 个"
+                );
+            }
+        } catch (\Exception $e) {
+            $results[] = array(
+                'api' => '系统',
+                'task' => 'order_export_cleanup',
+                'result' => '订单导出清理失败: ' . $e->getMessage()
             );
         }
 
@@ -230,7 +404,7 @@ class Cron
             $orderShouldRun = $this->shouldRun($orderLastTime, $orderInterval);
             $orderWillExecute = $orderSyncEnabled && $orderShouldRun;
             
-            $callbackOnlyApis = array('lanchang', 'haoky', 'haoy', 'guangmengyun');
+            $callbackOnlyApis = array('lanchang', 'haoy', 'guangmengyun');
             $isCallbackOnly = in_array($apiType, $callbackOnlyApis);
             
             if ($debug) {
@@ -262,10 +436,15 @@ class Cron
             }
         }
 
+        $executedCount = count($results);
+        foreach ($statusItems as $item) {
+            $results[] = $item;
+        }
+
         $response = array(
             'code' => 0,
             'msg' => '调度完成',
-            'executed_count' => count($results),
+            'executed_count' => $executedCount,
             'data' => $results,
             'time' => $now
         );
@@ -280,7 +459,8 @@ class Cron
                 'cloudexport_callback_sync' => 'WPS补偿回传',
                 'generate_images' => '商品转图',
                 'reset_daily_stats' => '日统计重置',
-                'reset_monthly_stats' => '月统计重置'
+                'reset_monthly_stats' => '月统计重置',
+                'order_export_cleanup' => '订单导出清理'
             );
             foreach ($results as $r) {
                 $taskName = isset($taskMap[$r['task']]) ? $taskMap[$r['task']] : $r['task'];
@@ -323,9 +503,11 @@ class Cron
         $configId = $config['id'];
         $shopType = isset($config['product_shop_type']) ? $config['product_shop_type'] : 0;
         $filterKeywords = isset($config['product_filter_keywords']) ? $config['product_filter_keywords'] : '';
+        $categoryId = $this->getProductSyncCategoryId($config);
 
         try {
             $result = '';
+            $this->withProductSyncCategoryPost($categoryId);
             
             switch ($apiType) {
                 case 'hao172':
@@ -369,6 +551,10 @@ class Cron
                     break;
                 default:
                     $result = '不支持的API类型';
+            }
+
+            if ($this->isProductSyncResultSuccessful($result)) {
+                $result = $this->appendProductSyncCategoryResult($apiType, $configId, $result, $categoryId);
             }
 
             // 根据过滤关键词下架匹配的产品
@@ -467,6 +653,21 @@ class Cron
         return $filterCount;
     }
 
+    private function isProductSyncResultSuccessful($result)
+    {
+        $text = (string)$result;
+        if ($text === '') {
+            return false;
+        }
+
+        foreach (array('失败', '异常', '错误', '不支持', '不存在', '授权', 'Product类不存在', '方法不存在') as $keyword) {
+            if (strpos($text, $keyword) !== false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * 调用商品同步方法
      */
@@ -524,8 +725,10 @@ class Cron
 
         $product = new $className();
         
-        $_POST['config_id'] = $configId;
-        $_POST['from_admin'] = '1';
+        $this->mergePostData(array(
+            'config_id' => $configId,
+            'from_admin' => '1',
+        ));
         
         switch ($syncType) {
             case 'full':
@@ -570,7 +773,7 @@ class Cron
         }
 
         $product = new $className();
-        $_POST['shop_type'] = $shopType;
+        $this->mergePostData(array('shop_type' => $shopType));
         
         switch ($syncType) {
             case 'full':
@@ -638,7 +841,7 @@ class Cron
      */
     private function callOrderSync($apiType, $configId, $limit, $days)
     {
-        $callbackOnlyApis = array('lanchang', 'haoky', 'haoy', 'gth91');
+        $callbackOnlyApis = array('lanchang', 'haoy', 'gth91');
         if (in_array($apiType, $callbackOnlyApis)) {
             return '该API仅支持回调模式，无需主动查询';
         }
@@ -776,31 +979,21 @@ class Cron
      */
     private function autoGenerateImagesAfterSync()
     {
-        // 检查是否有激活的模板（转图功能是否开启）
-        $template = ImageTemplateService::getActiveTemplate();
-        if (!$template) {
+        // 检查是否有开启 API 自动转图的激活模板
+        $activeTemplateCount = Db::name('image_template')
+            ->where('is_active', 1)
+            ->where('status', 1)
+            ->where('api_auto_generate', 1)
+            ->count();
+        if (!$activeTemplateCount) {
             return null; // 未开启转图功能，静默跳过
         }
 
-        // 检查是否开启了API同步后自动转图
-        if (empty($template['api_auto_generate'])) {
-            return null; // 未开启API自动转图，静默跳过
-        }
-
-        // 获取已生成图片的商品ID
-        $generatedIds = Db::name('product_custom_image')
-            ->where('template_id', $template['id'])
-            ->column('product_id');
-
-        // 查询未生成图片的上架商品
+        // 查询上架商品，逐个按商品分类匹配模板
         $query = Db::name('product')
             ->where('status', 1)
             ->order('id asc')
             ->limit(200); // 每次最多处理200个
-
-        if (!empty($generatedIds)) {
-            $query->whereNotIn('id', $generatedIds);
-        }
 
         $products = $query->select()->toArray();
 
@@ -813,6 +1006,17 @@ class Cron
 
         foreach ($products as $product) {
             try {
+                $template = ImageTemplateService::getActiveTemplateForProduct($product);
+                if (!$template || empty($template['api_auto_generate'])) {
+                    continue;
+                }
+                $exists = Db::name('product_custom_image')
+                    ->where('product_id', intval($product['id'] ?? 0))
+                    ->where('template_id', intval($template['id'] ?? 0))
+                    ->value('image_url');
+                if ($exists) {
+                    continue;
+                }
                 $result = ImageTemplateService::generateImage($product, $template['id'], false);
                 if ($result) {
                     $success++;
@@ -839,25 +1043,19 @@ class Cron
     private function runImageGenerate($limit = 100)
     {
         // 获取当前激活的模板
-        $template = ImageTemplateService::getActiveTemplate();
-        if (!$template) {
+        $activeTemplateCount = Db::name('image_template')
+            ->where('is_active', 1)
+            ->where('status', 1)
+            ->count();
+        if (!$activeTemplateCount) {
             return '没有激活的图片模板';
         }
 
-        // 获取已生成图片的商品ID
-        $generatedIds = Db::name('product_custom_image')
-            ->where('template_id', $template['id'])
-            ->column('product_id');
-
-        // 查询未生成图片的商品
+        // 查询商品，逐个按分类匹配模板
         $query = Db::name('product')
             ->where('status', 1)
             ->order('id asc')
             ->limit($limit);
-
-        if (!empty($generatedIds)) {
-            $query->whereNotIn('id', $generatedIds);
-        }
 
         $products = $query->select()->toArray();
 
@@ -870,6 +1068,18 @@ class Cron
 
         foreach ($products as $product) {
             try {
+                $template = ImageTemplateService::getActiveTemplateForProduct($product);
+                if (!$template) {
+                    $fail++;
+                    continue;
+                }
+                $exists = Db::name('product_custom_image')
+                    ->where('product_id', intval($product['id'] ?? 0))
+                    ->where('template_id', intval($template['id'] ?? 0))
+                    ->value('image_url');
+                if ($exists) {
+                    continue;
+                }
                 $result = ImageTemplateService::generateImage($product, $template['id'], false);
                 if ($result) {
                     $success++;
@@ -904,8 +1114,11 @@ class Cron
 
         try {
             // 获取当前激活的模板
-            $template = ImageTemplateService::getActiveTemplate();
-            if (!$template) {
+            $activeTemplateCount = Db::name('image_template')
+                ->where('is_active', 1)
+                ->where('status', 1)
+                ->count();
+            if (!$activeTemplateCount) {
                 return json(array('code' => 1, 'msg' => '没有激活的图片模板'));
             }
 
@@ -919,17 +1132,6 @@ class Cron
                 $query->where('yys', $yys);
             }
 
-            // 如果不是强制模式，只查询未生成图片的商品
-            if (!$force) {
-                $generatedIds = Db::name('product_custom_image')
-                    ->where('template_id', $template['id'])
-                    ->column('product_id');
-
-                if (!empty($generatedIds)) {
-                    $query->whereNotIn('id', $generatedIds);
-                }
-            }
-
             $products = $query->select()->toArray();
 
             if (empty($products)) {
@@ -941,6 +1143,20 @@ class Cron
 
             foreach ($products as $product) {
                 try {
+                    $template = ImageTemplateService::getActiveTemplateForProduct($product);
+                    if (!$template) {
+                        $fail++;
+                        continue;
+                    }
+                    if (!$force) {
+                        $exists = Db::name('product_custom_image')
+                            ->where('product_id', intval($product['id'] ?? 0))
+                            ->where('template_id', intval($template['id'] ?? 0))
+                            ->value('image_url');
+                        if ($exists) {
+                            continue;
+                        }
+                    }
                     $result = ImageTemplateService::generateImage($product, $template['id'], $force);
                     if ($result) {
                         $success++;
@@ -961,7 +1177,7 @@ class Cron
                 'data' => array(
                     'success' => $success,
                     'fail' => $fail,
-                    'template' => $template['name']
+                    'template' => '按商品分类匹配模板'
                 )
             ));
         } catch (\Exception $e) {
@@ -1048,6 +1264,139 @@ class Cron
     {
         $controller = new Payout();
         return $controller->runRetryJob(20);
+    }
+
+    /**
+     * 执行处理中打款查单任务
+     * @return array
+     */
+    private function runPayoutProcessingQueryTask()
+    {
+        $controller = new Payout();
+        return $controller->runProcessingQueryJob(20);
+    }
+
+    /**
+     * 记录打款查单任务日志
+     */
+    private function writePayoutQueryLog($stage, $data = array())
+    {
+        try {
+            $line = '[' . date('Y-m-d H:i:s') . '] ' . $stage;
+            if (!empty($data)) {
+                $line .= ' ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+            $line .= PHP_EOL;
+            @file_put_contents(root_path() . 'runtime' . DIRECTORY_SEPARATOR . 'payout_processing_query.log', $line, FILE_APPEND | LOCK_EX);
+        } catch (\Throwable $e) {
+            // 查单日志不能影响定时任务主流程
+        }
+    }
+
+    /**
+     * 清理超过指定小时数的订单导出文件和任务记录。
+     */
+    private function runOrderExportCleanup($keepHours = 48)
+    {
+        $keepHours = max(1, intval($keepHours));
+        $expireTime = time() - ($keepHours * 3600);
+        $result = array(
+            'job_deleted' => 0,
+            'file_deleted' => 0
+        );
+
+        $rootPath = app()->getRootPath();
+        $jobDir = $rootPath . 'runtime' . DIRECTORY_SEPARATOR . 'order_export_jobs' . DIRECTORY_SEPARATOR;
+        $exportDir = $rootPath . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'order_export' . DIRECTORY_SEPARATOR;
+        $knownFiles = array();
+
+        if (is_dir($jobDir)) {
+            $jobFiles = glob($jobDir . '*.json');
+            if ($jobFiles) {
+                foreach ($jobFiles as $jobFile) {
+                    if (!is_file($jobFile)) {
+                        continue;
+                    }
+
+                    $job = json_decode((string)file_get_contents($jobFile), true);
+                    $createdAt = is_array($job) ? intval($job['created_at'] ?? 0) : 0;
+                    $updatedAt = is_array($job) ? intval($job['updated_at'] ?? 0) : 0;
+                    $jobTime = $createdAt > 0 ? $createdAt : ($updatedAt > 0 ? $updatedAt : filemtime($jobFile));
+                    $filePath = is_array($job) ? (string)($job['file_path'] ?? '') : '';
+
+                    if ($filePath !== '') {
+                        $knownFiles[$this->normalizePathForCompare($filePath)] = true;
+                    }
+
+                    if ($jobTime >= $expireTime) {
+                        continue;
+                    }
+
+                    if ($filePath !== '' && is_file($filePath) && $this->isPathInDirectory($filePath, $exportDir)) {
+                        if (@unlink($filePath)) {
+                            $result['file_deleted']++;
+                        }
+                    }
+
+                    if (@unlink($jobFile)) {
+                        $result['job_deleted']++;
+                    }
+                }
+            }
+        }
+
+        // 兜底清理没有任务记录的过期CSV文件。
+        if (is_dir($exportDir)) {
+            $csvFiles = glob($exportDir . '*' . DIRECTORY_SEPARATOR . '*.csv');
+            if ($csvFiles) {
+                foreach ($csvFiles as $csvFile) {
+                    if (!is_file($csvFile) || filemtime($csvFile) >= $expireTime) {
+                        continue;
+                    }
+                    $normalized = $this->normalizePathForCompare($csvFile);
+                    if (isset($knownFiles[$normalized])) {
+                        continue;
+                    }
+                    if ($this->isPathInDirectory($csvFile, $exportDir) && @unlink($csvFile)) {
+                        $result['file_deleted']++;
+                    }
+                }
+            }
+
+            $dateDirs = glob($exportDir . '*', GLOB_ONLYDIR);
+            if ($dateDirs) {
+                foreach ($dateDirs as $dateDir) {
+                    $items = glob($dateDir . DIRECTORY_SEPARATOR . '*');
+                    if (is_dir($dateDir) && empty($items)) {
+                        @rmdir($dateDir);
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    private function normalizePathForCompare($path)
+    {
+        $realPath = realpath($path);
+        if ($realPath !== false) {
+            return strtolower(str_replace('\\', '/', $realPath));
+        }
+        return strtolower(str_replace('\\', '/', (string)$path));
+    }
+
+    private function isPathInDirectory($path, $directory)
+    {
+        $realPath = realpath($path);
+        $realDirectory = realpath($directory);
+        if ($realPath === false || $realDirectory === false) {
+            return false;
+        }
+
+        $realPath = rtrim(str_replace('\\', '/', $realPath), '/');
+        $realDirectory = rtrim(str_replace('\\', '/', $realDirectory), '/');
+        return strpos($realPath . '/', $realDirectory . '/') === 0;
     }
 
     /**
@@ -1239,6 +1588,13 @@ class Cron
 
     public function triggerCloudexportCallbackSync()
     {
+        $securityKey = input('security_key', '');
+        $configKey = $this->getSecurityKey();
+
+        if (empty($securityKey) || $securityKey !== $configKey) {
+            return json(array('code' => 1, 'msg' => '安全密钥验证失败'));
+        }
+
         try {
             $configId = intval(input('config_id', input('id', 0)));
             if ($configId <= 0) {
@@ -1315,9 +1671,10 @@ class Cron
         $results = array();
         $debugInfo = array();
         $pendingTasks = array();
+        $statusItems = array();
 
         if (!$this->hasCloudexportColumnMap()) {
-            return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks);
+            return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks, 'status' => $statusItems);
         }
 
         $configs = Db::name('config_cloudexport')
@@ -1332,7 +1689,16 @@ class Cron
             $interval = max(1, intval($meta['__callback_cron_interval'] ?? 5));
             $lastTime = trim((string)($meta['__callback_cron_last_time'] ?? ''));
             $webhookUrl = trim((string)($meta['__callback_trigger_webhook_url'] ?? ''));
-            $willExecute = $enabled && $webhookUrl !== '' && $this->shouldRun($lastTime, $interval);
+            $isDue = $this->shouldRun($lastTime, $interval);
+            $skipReason = '';
+            if (!$enabled) {
+                $skipReason = '补偿回传未启用';
+            } elseif ($webhookUrl === '') {
+                $skipReason = '未配置补偿Webhook地址';
+            } elseif (!$isDue) {
+                $skipReason = '未到执行时间';
+            }
+            $willExecute = $skipReason === '';
             $displayName = $this->formatCloudexportDisplayName($config);
 
             if ($debug) {
@@ -1344,12 +1710,21 @@ class Cron
                     'last_time' => $lastTime ?: '从未执行',
                     'interval' => $interval . '分钟',
                     'webhook' => $webhookUrl !== '' ? '✓已配置' : '✗未配置',
-                    'should_run' => $this->shouldRun($lastTime, $interval) ? '✓到期' : '✗未到期',
-                    'will_execute' => $willExecute ? '✓执行' : '✗跳过'
+                    'should_run' => $isDue ? '✓到期' : '✗未到期',
+                    'will_execute' => $willExecute ? '✓执行' : '✗跳过',
+                    'skip_reason' => $skipReason
                 );
                 if ($willExecute) {
                     $pendingTasks[] = '[WPS补偿回传] ' . $displayName;
                 }
+            }
+
+            if (!$willExecute) {
+                $statusItems[] = array(
+                    'api' => $displayName,
+                    'task' => 'cloudexport_callback_sync_status',
+                    'result' => '跳过：' . $skipReason
+                );
             }
 
             if ($willExecute) {
@@ -1362,7 +1737,29 @@ class Cron
             }
         }
 
-        return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks);
+        if (empty($results) && !empty($configs)) {
+            $skipSummary = array();
+            foreach ($configs as $config) {
+                $meta = $this->decodeCloudexportMeta($config['export_column_map'] ?? '');
+                $enabled = intval($meta['__callback_cron_enabled'] ?? 0) ? 1 : 0;
+                $interval = max(1, intval($meta['__callback_cron_interval'] ?? 5));
+                $lastTime = trim((string)($meta['__callback_cron_last_time'] ?? ''));
+                $webhookUrl = trim((string)($meta['__callback_trigger_webhook_url'] ?? ''));
+                if (!$enabled) {
+                    $reason = '未启用';
+                } elseif ($webhookUrl === '') {
+                    $reason = '未配置Webhook';
+                } elseif (!$this->shouldRun($lastTime, $interval)) {
+                    $reason = '未到时间';
+                } else {
+                    $reason = '未知原因';
+                }
+                $skipSummary[] = $this->formatCloudexportDisplayName($config) . ':' . $reason;
+            }
+            trace('[Cron] WPS补偿回传无执行配置，' . implode('；', $skipSummary), 'error');
+        }
+
+        return array('results' => $results, 'debug' => $debugInfo, 'pending_tasks' => $pendingTasks, 'status' => $statusItems);
     }
 
     private function runSingleCloudexportCallbackSync($configId, $force = false, $config = null, $meta = null)

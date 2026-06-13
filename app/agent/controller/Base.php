@@ -2,9 +2,8 @@
 namespace app\agent\controller;
 
 use app\common\service\AgentDomainBrandService;
+use app\agent\service\AgentTokenService;
 use app\common\traits\SafeCacheTrait;
-use think\facade\Session;
-
 class Base
 {
     use SafeCacheTrait;
@@ -27,7 +26,7 @@ class Base
         $controller = request()->controller();
         $action = request()->action();
         // 不需要登录验证的方法
-        $allowActions = ['login', 'captcha', 'logout'];
+        $allowActions = ['login', 'captcha', 'logout', 'image'];
         $isLoginController = ($controller === 'Login') || 
                             (strpos(get_class($this), 'Login') !== false);
         
@@ -44,47 +43,9 @@ class Base
      */
     protected function checkLogin()
     {
-        // 确保Session启动
-        if (session_status() == PHP_SESSION_NONE) {
-            $sessionPath = app()->getRuntimePath() . 'session';
-            if (!is_dir($sessionPath)) {
-                mkdir($sessionPath, 0755, true);
-            }
-            session_save_path($sessionPath);
-            session_start();
-        }
-
-        // 检查登录状态
-        $agentId = Session::get('agent_id');
+        $agent = AgentTokenService::getCurrentAgent();
+        $agentId = $agent ? (int)$agent['id'] : 0;
         $domainDenied = false;
-
-        // 如果Session中没有，尝试通过token验证
-        if (!$agentId) {
-            $token = $_COOKIE['agent_token'] ?? '';
-            if (!empty($token)) {
-                // 通过token查找代理
-                $agent = \think\facade\Db::table('agents')
-                    ->where('token', $token)
-                    ->where('status', '1')
-                    ->find();
-                
-                if ($agent) {
-                    if (!AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agent['id'])) {
-                        $domainDenied = true;
-                        if (isset($_COOKIE['agent_token'])) {
-                            setcookie('agent_token', '', time() - 3600, '/');
-                        }
-                    } else {
-                    // token有效，恢复Session
-                        Session::set('agent_id', $agent['id']);
-                        Session::set('agent_username', $agent['username']);
-                        Session::set('agent_info', $agent);
-                        
-                        $agentId = $agent['id'];
-                    }
-                }
-            }
-        }
 
         if ($agentId && !AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agentId)) {
             $domainDenied = true;
@@ -96,15 +57,27 @@ class Base
             // Ajax请求返回JSON
             if (request()->isAjax()) {
                 $msg = $domainDenied ? '当前域名无访问权限，请使用所属代理域名登录' : '请先登录';
-                json(['code' => 1, 'msg' => $msg, 'url' => '/agent/login'])->send();
+                json(['code' => 1, 'msg' => $msg, 'url' => '/#/agent'])->send();
                 exit;
             }
-            // 普通请求跳转到登录页
-            redirect('/agent/login')->send();
+            // 普通请求跳转到 Vue 登录页
+            redirect($this->vueLoginUrl('agent'))->send();
             exit;
         }
         
         return true;
+    }
+
+    protected function vueLoginUrl(string $loginType): string
+    {
+        $path = $loginType === 'agent' ? '/#/agent' : '/#/admin';
+        $scheme = request()->header('X-Forwarded-Proto') ?: request()->scheme();
+        $host = request()->header('X-Forwarded-Host') ?: request()->server('HTTP_HOST', request()->host());
+        if (preg_match('/:(9000|8000)$/', $host)) {
+            $host = preg_replace('/:(9000|8000)$/', ':3006', $host);
+            return $scheme . '://' . $host . $path;
+        }
+        return $path;
     }
 
     /**
@@ -112,12 +85,7 @@ class Base
      */
     protected function clearAgentAuth()
     {
-        Session::delete('agent_id');
-        Session::delete('agent_username');
-        Session::delete('agent_info');
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            Session::save();
-        }
+        AgentTokenService::revokeCurrentToken();
         if (isset($_COOKIE['agent_token'])) {
             setcookie('agent_token', '', time() - 3600, '/');
         }
@@ -128,23 +96,7 @@ class Base
      */
     protected function getAgentId()
     {
-        $agentId = Session::get('agent_id');
-        
-        // 如果Session中没有，尝试通过token获取
-        if (!$agentId) {
-            $token = $_COOKIE['agent_token'] ?? '';
-            if (!empty($token)) {
-                $agent = \think\facade\Db::table('agents')
-                    ->where('token', $token)
-                    ->where('status', '1')
-                    ->find();
-                if ($agent) {
-                    $agentId = $agent['id'];
-                }
-            }
-        }
-        
-        return $agentId;
+        return AgentTokenService::getCurrentAgentId();
     }
 
     /**
@@ -152,23 +104,7 @@ class Base
      */
     protected function getAgentInfo()
     {
-        $agentInfo = Session::get('agent_info');
-        
-        // 如果Session中没有，尝试通过token获取
-        if (!$agentInfo) {
-            $token = $_COOKIE['agent_token'] ?? '';
-            if (!empty($token)) {
-                $agent = \think\facade\Db::table('agents')
-                    ->where('token', $token)
-                    ->where('status', '1')
-                    ->find();
-                if ($agent) {
-                    $agentInfo = $agent;
-                }
-            }
-        }
-        
-        return $agentInfo;
+        return AgentTokenService::getCurrentAgent();
     }
 
     /**

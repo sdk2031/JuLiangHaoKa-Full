@@ -1,3 +1,3 @@
 <?php
-$ApfBuEt1091=array();$ApfBuEt1091[]=18;$ApfBuEt1091[]=17;$ApfBuEt1091[]=17;$ApfBuEt1091[]=19;$ApfBuEt1091[]=18;$ApfvPUA=\think\middleware\SessionInit::class;$ApfzAUA=array();$ApfzAUA[]=$ApfvPUA;return $ApfzAUA;
+$IulBuEt1=array();$IulBuEt1[]=17;$IulBuEt1[]=20;$IulBuEt1[]=5;$IulBuEt1[]=3;$IulBuEt1[]=9;$IulvPZB=\app\middleware\CheckSiteStatus::class;$IulvPZC=\app\middleware\AdminOperationLog::class;$IulzAZB=array();$IulzAZB[]=$IulvPZB;$IulzAZB[]=$IulvPZC;return $IulzAZB;
 ?>

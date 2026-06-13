@@ -1,4 +1,4 @@
-﻿(function (win) {
+(function (win) {
     function formatMessageHtml(text) {
         var content = String(text == null ? '' : text);
         return content
@@ -36,6 +36,31 @@
         formData.append(name, field ? field.value : '');
     }
 
+    function getEffectiveVerifyPayload() {
+        var verifyCodeField = document.querySelector('input[name="verify_code"]');
+        var verifyTypeField = document.querySelector('input[name="verify_type"]');
+        var verifyType = verifyTypeField ? String(verifyTypeField.value || '').toLowerCase() : 'none';
+
+        if (!verifyCodeField) {
+            if (verifyTypeField && verifyType !== 'none') {
+                verifyTypeField.value = 'none';
+            }
+            return {
+                verify_code: '',
+                verify_type: 'none'
+            };
+        }
+
+        if (verifyType !== 'sms' && verifyType !== 'image') {
+            verifyType = 'none';
+        }
+
+        return {
+            verify_code: verifyCodeField.value || '',
+            verify_type: verifyType
+        };
+    }
+
     function getAvailablePaymentMethods() {
         var methods = win.SHOP_PAYMENT_METHODS;
         if (!Array.isArray(methods)) {
@@ -60,8 +85,6 @@
             'customer_name',
             'customer_phone',
             'order_phone',
-            'verify_code',
-            'verify_type',
             'customer_idcard',
             'customer_address',
             'customer_city',
@@ -75,6 +98,10 @@
         ].forEach(function (name) {
             appendField(formData, name);
         });
+
+        var verifyPayload = getEffectiveVerifyPayload();
+        formData.append('verify_code', verifyPayload.verify_code);
+        formData.append('verify_type', verifyPayload.verify_type);
 
         var selectedNumberEl = document.querySelector('input[name="selected_number"]');
         if (selectedNumberEl && selectedNumberEl.value) {

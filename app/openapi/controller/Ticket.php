@@ -32,12 +32,17 @@ class Ticket extends BaseApi
     private function getStatusText($status)
     {
         $statusMap = [
-            1 => '待处理',
+            1 => '待回复',
             2 => '处理中',
-            3 => '已解决',
-            4 => '已关闭'
+            3 => '已结束',
+            4 => '已结束'
         ];
-        return $statusMap[$status] ?? '待处理';
+        return $statusMap[$status] ?? '待回复';
+    }
+
+    private function isEndedStatus($status): bool
+    {
+        return in_array((int)$status, [3, 4], true);
     }
     
     
@@ -82,8 +87,12 @@ class Ticket extends BaseApi
             }
             
             if ($status !== '') {
-                $whereConditions[] = "t.status = ?";
-                $params[] = $status;
+                if ((int)$status === 3) {
+                    $whereConditions[] = "t.status IN (3, 4)";
+                } else {
+                    $whereConditions[] = "t.status = ?";
+                    $params[] = $status;
+                }
             }
             
             if ($keyword) {
@@ -383,8 +392,8 @@ class Ticket extends BaseApi
                 return $this->error('工单不存在或无权限操作');
             }
             
-            if ($ticket['status'] == 4) {
-                return $this->error('工单已关闭，无法回复');
+            if ($this->isEndedStatus($ticket['status'])) {
+                return $this->error('工单已结束，无法回复');
             }
             
             // 插入回复记录
@@ -414,7 +423,7 @@ class Ticket extends BaseApi
     }
 
     /**
-     * 关闭工单
+     * 结束工单
      * 对应前端调用：POST /openapi/ticket/close
      */
     public function close()
@@ -453,26 +462,26 @@ class Ticket extends BaseApi
                 return $this->error('工单不存在或无权限操作');
             }
             
-            if ($ticket['status'] == 4) {
-                return $this->error('工单已关闭');
+            if ($this->isEndedStatus($ticket['status'])) {
+                return $this->error('工单已结束');
             }
             
-            // 关闭工单
-            $updateSql = "UPDATE tickets SET status = 4, update_time = ?, close_time = ? WHERE id = ?";
+            // 结束工单；历史 status=4 仅保留兼容读取，新产生的结束状态统一写 3。
+            $updateSql = "UPDATE tickets SET status = 3, update_time = ?, close_time = ? WHERE id = ?";
             $updateStmt = $db->prepare($updateSql);
             $result = $updateStmt->execute([time(), time(), $ticketId]);
             
             if (!$result) {
                 error_log("Close ticket failed with error info: " . print_r($updateStmt->errorInfo(), true));
-                return $this->error('关闭工单失败');
+                return $this->error('结束工单失败');
             }
             
-            error_log("Ticket closed successfully: " . $ticketId . " by agent: " . $agentId);
-            return $this->success([], '工单已关闭');
+            error_log("Ticket ended successfully: " . $ticketId . " by agent: " . $agentId);
+            return $this->success([], '工单已结束');
             
         } catch (\Exception $e) {
             error_log("Ticket close error: " . $e->getMessage());
-            return $this->error('关闭工单失败：' . $e->getMessage());
+            return $this->error('结束工单失败：' . $e->getMessage());
         }
     }
 
@@ -578,7 +587,7 @@ class Ticket extends BaseApi
                 'id' => (int)$ticketId,
                 'ticket_no' => $ticketNo,
                 'title' => $title,
-                'status' => '待处理',
+                'status' => '待回复',
                 'status_code' => 1,
                 'created_at' => $this->formatTime($createTime)
             ], '工单创建成功');
@@ -643,8 +652,8 @@ class Ticket extends BaseApi
             if (!$ticket) {
                 return $this->error('工单不存在或无权限操作');
             }
-            if ((int)$ticket['status'] === 4) {
-                return $this->error('工单已关闭，无法上传图片');
+            if ($this->isEndedStatus($ticket['status'])) {
+                return $this->error('工单已结束，无法上传图片');
             }
 
             $uploadService = new UploadService();

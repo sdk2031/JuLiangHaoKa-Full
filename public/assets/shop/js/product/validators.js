@@ -179,6 +179,21 @@
         return true;
     }
 
+    function getEffectiveVerifyType() {
+        var verifyTypeEl = document.querySelector('input[name="verify_type"]');
+        var verifyCodeEl = document.querySelector('input[name="verify_code"]');
+        var verifyType = verifyTypeEl ? String(verifyTypeEl.value || '').toLowerCase() : 'none';
+
+        if (!verifyCodeEl) {
+            if (verifyTypeEl && verifyType !== 'none') {
+                verifyTypeEl.value = 'none';
+            }
+            return 'none';
+        }
+
+        return verifyType === 'sms' || verifyType === 'image' ? verifyType : 'none';
+    }
+
     function validateCommonFields(formData, layer) {
         var name = formData.get('customer_name');
         var phone = formData.get('customer_phone');
@@ -186,8 +201,7 @@
         var orderPhone = formData.get('order_phone');
         var address = formData.get('customer_address');
         var city = formData.get('customer_city');
-        var verifyTypeEl = document.querySelector('input[name="verify_type"]');
-        var verifyType = verifyTypeEl ? verifyTypeEl.value : 'none';
+        var verifyType = getEffectiveVerifyType();
 
         if (!name) {
             msg(layer, '请输入姓名');
@@ -297,8 +311,7 @@
     }
 
     function validateSelfOperatedFields(formData, layer) {
-        var verifyTypeEl = document.querySelector('input[name="verify_type"]');
-        var verifyType = verifyTypeEl ? verifyTypeEl.value : 'none';
+        var verifyType = getEffectiveVerifyType();
 
         if (verifyType !== 'none') {
             var verifyCode = formData.get('verify_code');

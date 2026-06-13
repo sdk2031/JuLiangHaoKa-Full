@@ -11,12 +11,12 @@ return array(
         'type' => 1,
         'sort' => 1,
     ),
-    
+
     // 2. 组织架构
     array(
         'id' => 'organization',
         'name' => '组织架构',
-        'icon' => 'layui-icon-component',
+        'icon' => 'ri:organization-chart',
         'route' => '',
         'type' => 1,
         'sort' => 2,
@@ -24,6 +24,7 @@ return array(
             array(
                 'id' => 'admin_user_list',
                 'name' => '管理员列表',
+                'icon' => 'ri:admin-line',
                 'route' => '/admin/adminuser/index',
                 'permission' => 'system:admin',
                 'type' => 1,
@@ -36,6 +37,7 @@ return array(
             array(
                 'id' => 'role_manage',
                 'name' => '角色管理',
+                'icon' => 'ri:shield-user-line',
                 'route' => '/admin/role/index',
                 'permission' => 'system:role',
                 'type' => 1,
@@ -44,6 +46,7 @@ return array(
             array(
                 'id' => 'employee_group_manage',
                 'name' => '员工管理',
+                'icon' => 'ri:team-line',
                 'route' => '/admin/employee/index',
                 'permission' => 'employee:group:view',
                 'type' => 1,
@@ -62,7 +65,7 @@ return array(
             ),
         ),
     ),
-    
+
     // 3. 产品管理
     array(
         'id' => 'product_manage',
@@ -83,6 +86,7 @@ return array(
                 'children' => array(
                     array('id' => 'product_add_btn', 'name' => '添加产品', 'type' => 2, 'permission' => 'product:add', 'visible' => false, 'sort' => 1),
                     array('id' => 'product_edit_btn', 'name' => '编辑产品', 'type' => 2, 'permission' => 'product:edit', 'visible' => false, 'sort' => 2),
+                    array('id' => 'product_agent_groups_api', 'name' => '读取代理分组选项', 'route' => '/admin/agent/getGroups', 'type' => 2, 'permission' => 'product:list', 'visible' => false, 'sort' => 3),
                 ),
             ),
             array(
@@ -94,12 +98,20 @@ return array(
                 'sort' => 2,
             ),
             array(
+                'id' => 'product_category',
+                'name' => '产品分类',
+                'route' => '/admin/product/category',
+                'permission' => 'product:category',
+                'type' => 1,
+                'sort' => 3,
+            ),
+            array(
                 'id' => 'product_collection',
                 'name' => '产品合集',
                 'route' => '/admin/product_collection/index',
                 'permission' => 'product:collection',
                 'type' => 1,
-                'sort' => 3,
+                'sort' => 4,
             ),
             array(
                 'id' => 'number_pool_manage',
@@ -119,8 +131,8 @@ return array(
             ),
         ),
     ),
-    
-   
+
+
     // 4. 订单管理
     array(
         'id' => 'order_manage',
@@ -144,7 +156,7 @@ return array(
             ),
             array(
                 'id' => 'order_batch',
-                'name' => '批量处理',
+                'name' => '批量更新订单',
                 'route' => '/admin/orderbatch/index',
                 'permission' => 'order:batch',
                 'type' => 1,
@@ -159,25 +171,16 @@ return array(
                 'type' => 1,
                 'sort' => 3,
             ),
-            array(
-                'id' => 'order_cloud_export_history',
-                'name' => 'WPS推送历史',
-                'route' => '/admin/cloudexport/history',
-                'permission' => 'order:cloud_export',
-                'plugin' => 'wps_excel',
-                'type' => 1,
-                'sort' => 4,
-            ),
         ),
     ),
-    
+
     // 5. 代理管理
     array(
         'id' => 'agent_manage',
         'name' => '代理管理',
         'icon' => 'layui-icon-user',
         'route' => '',
-        'permission' => 'agent:manage',  
+        'permission' => 'agent:manage',
         'type' => 1,
         'sort' => 5,
         'children' => array(
@@ -191,146 +194,46 @@ return array(
                   'children' => array(
                     array('id' => 'agent_import_btn', 'name' => '批量导入代理', 'type' => 2, 'permission' => 'agent:import', 'visible' => false, 'sort' => 1),
                     array('id' => 'agent_edit_btn', 'name' => '编辑代理', 'type' => 2, 'permission' => 'agent:edit', 'visible' => false, 'sort' => 2),
+                    array('id' => 'agent_migrate_btn', 'name' => '代理迁移', 'type' => 2, 'permission' => 'agent:list:migrate', 'visible' => false, 'sort' => 3),
                   ),
             ),
             array(
                 'id' => 'distribution_level',
-                'name' => '分销等级',
+                'name' => '分销模式',
                 'route' => '/admin/distributionlevel/index',
                 'permission' => 'agent:distribution_level',
-                'feature' => 'fixed_distribution',
                 'type' => 1,
-                'sort' => 3,
+                'sort' => 2,
             ),
             array(
                 'id' => 'invite_code_reserved',
                 'name' => '靓号邀请码',
                 'route' => '/admin/invitecodereserved/index',
                 'permission' => 'agent:invite_reserved',
-                'feature' => 'fixed_distribution',
                 'type' => 1,
                 'sort' => 4,
             ),
             array(
                 'id' => 'secret_price',
-                'name' => '密价等级',
+                'name' => '商务政策',
                 'route' => '/admin/secretpricelevel/index',
                 'permission' => 'agent:price',
-                'plugin' => 'secret_price', 
-                'type' => 1,
-                'sort' => 2,
-            ),
-            array(
-                'id' => 'agent_migrate',
-                'name' => '代理迁移',
-                'route' => '/admin/agentmigrate/index',
-                'permission' => 'agent:migrate',
-                'type' => 1,
-                'sort' => 3,
-                'plugin' => 'agent_migrate', 
-            ),
-        ),
-    ),
-    
-    // 6. 财务管理
-    array(
-        'id' => 'finance_manage',
-        'name' => '财务管理',
-        'icon' => 'layui-icon-rmb',
-        'route' => '',
-        'permission' => 'finance:manage',  
-        'type' => 1,
-        'sort' => 6,
-        'children' => array(
-            array(
-                'id' => 'withdraw_manage',
-                'name' => '提现管理',
-                'route' => '/admin/withdraw/index',
-                'permission' => 'finance:withdraw',
-                'type' => 1,
-                'sort' => 1,
-                'children' => array(
-                    array('id' => 'withdraw_approve_btn', 'name' => '审核通过', 'type' => 2, 'permission' => 'finance:approve', 'visible' => false, 'sort' => 1),
-                    array('id' => 'withdraw_reject_btn', 'name' => '审核拒绝', 'type' => 2, 'permission' => 'finance:reject', 'visible' => false, 'sort' => 2),
-                ),
-            ),
-            array(
-                'id' => 'balance_log',
-                'name' => '资金变动',
-                'route' => '/admin/balance/logs',
-                'permission' => 'finance:log',
-                'type' => 1,
-                'sort' => 2,
-            ),
-            array(
-                'id' => 'payment_records',
-                'name' => '支付记录',
-                'route' => '/admin/payment/records',
-                'permission' => 'finance:payment',
-                'plugin' => 'pay_card',
+                'plugin' => 'secret_price',
                 'type' => 1,
                 'sort' => 3,
             ),
-            array(
-                'id' => 'product_income_stats',
-                'name' => '产品收款对账',
-                'route' => '/admin/productincome/index',
-                'permission' => 'finance:payment',
-                'plugin' => 'pay_card',
-                'type' => 1,
-                'sort' => 4,
-            ),
-              array(
-                'id' => 'payout_ledger',
-                'name' => '云账户对账单',
-                'route' => '/admin/payoutledger/index',
-                'permission' => 'finance:payout_ledger',
-                'feature' => 'yun_payout',
-                'type' => 1,
-                'sort' => 5,
-            ),
         ),
     ),
-    
-    // 7. 工单管理
-    array(
-        'id' => 'ticket_manage',
-        'name' => '工单管理',
-        'icon' => 'layui-icon-service',
-        'route' => '',
-        'permission' => 'service:manage',  
-        'type' => 1,
-        'sort' => 7,
-        'plugin' => 'workorder', 
-        'children' => array(
-            array(
-                'id' => 'ticket_list',
-                'name' => '工单列表',
-                'route' => '/admin/ticket/index',
-                'permission' => 'service:ticket',
-                'type' => 1,
-                'sort' => 1,
-            ),
-            array(
-                'id' => 'ticket_category',
-                'name' => '分类管理',
-                'route' => '/admin/ticketcategory/index',
-                'permission' => 'service:category',
-                'type' => 1,
-                'sort' => 2,
-            ),
-        ),
-    ),
-    
-    // 8. 营销活动
+
+    // 6. 营销活动
     array(
         'id' => 'activity_manage',
         'name' => '营销活动',
         'icon' => 'layui-icon-gift',
-        'route' => '',
-        'permission' => 'marketing:manage',  
+        'route' => '/admin/activity/index',
+        'permission' => 'marketing:manage',
         'type' => 1,
-        'sort' => 8,
+        'sort' => 5.1,
         'plugin' => 'marketing',
         'children' => array(
             array(
@@ -338,7 +241,8 @@ return array(
                 'name' => '活动管理',
                 'route' => '/admin/activity/index',
                 'permission' => 'marketing:activity',
-                'type' => 1,
+                'type' => 2,
+                'visible' => false,
                 'sort' => 1,
             ),
             array(
@@ -346,21 +250,22 @@ return array(
                 'name' => '领取记录',
                 'route' => '/admin/activity/claims',
                 'permission' => 'marketing:claims',
-                'type' => 1,
+                'type' => 2,
+                'visible' => false,
                 'sort' => 2,
             ),
         ),
     ),
-    
-    // 9. 内容管理
+
+    // 7. 内容管理
     array(
         'id' => 'content_manage',
         'name' => '内容管理',
         'icon' => 'layui-icon-notice',
         'route' => '',
-        'permission' => 'content:manage',  
+        'permission' => 'content:manage',
         'type' => 1,
-        'sort' => 9,
+        'sort' => 5.2,
         'children' => array(
             array(
                 'id' => 'announcement_manage',
@@ -388,18 +293,17 @@ return array(
             ),
         ),
     ),
-    
-  
-    
-    // 11. 黑名单
+
+    // 12. 黑名单（订单列表入口使用，左侧菜单隐藏）
     array(
         'id' => 'blacklist_manage',
         'name' => '黑名单',
         'icon' => 'layui-icon-username',
         'route' => '',
-        'permission' => 'system:blacklist:manage', 
+        'permission' => 'system:blacklist:manage',
         'type' => 1,
-        'sort' => 11,
+        'sort' => 12,
+        'hidden' => 1,
         'children' => array(
             array(
                 'id' => 'blacklist_list',
@@ -408,106 +312,344 @@ return array(
                 'permission' => 'system:blacklist',
                 'type' => 1,
                 'sort' => 1,
-            ),
-            array(
-                'id' => 'blacklist_log',
-                'name' => '操作日志',
-                'route' => '/admin/blacklist/log',
-                'permission' => 'system:blacklist:log',
-                'type' => 1,
-                'sort' => 2,
+                'hidden' => 1,
             ),
         ),
     ),
-    
-    // 12. H5管理
+
+    // 8. 应用管理
     array(
-        'id' => 'h5_manage',
-        'name' => 'H5管理',
-        'icon' => 'layui-icon-component',
-        'route' => '',
-        'permission' => 'h5:manage',  
+        'id' => 'app_manage',
+        'name' => '应用管理',
+        'icon' => 'layui-icon-cellphone',
+        'route' => '/admin/appmanage/index',
+        'permission' => 'appdistribution:index',
         'type' => 1,
-        'sort' => 12,
-        'children' => array(
-             array(
-                'id' => 'shop_template_manage',
-                'name' => '店铺管理',
-                'route' => '/admin/shopmanage/index',
-                'permission' => 'shop:template',
-                'type' => 1,
-                'sort' => 1,
-            ),
-            array(
-                'id' => 'h5_config',
-                'name' => '代理手机端',
-                'route' => '/admin/configh5/index',
-                'permission' => 'h5:config',
-                'plugin' => 'h5', 
-                'type' => 1,
-                'sort' => 2,
-            ),
-           
-        ),
+        'sort' => 5.3,
     ),
-    
-    // 13. 一键转图
+
+    // 9. APP打包记录（工具箱入口使用，左侧菜单隐藏）
     array(
-        'id' => 'imagetemplate',
-        'name' => '一键转图',
-        'icon' => 'layui-icon-picture',
-        'route' => '/admin/imagetemplate/index',
-        'permission' => 'imagetemplate:manage',
+        'id' => 'app_pack_manage',
+        'name' => '打包记录',
+        'icon' => 'layui-icon-template',
+        'route' => '/admin/apppack/index',
+        'permission' => 'apppack:index',
         'type' => 1,
-        'sort' => 13,
-        'plugin' => 'imagetemplate', 
+        'sort' => 5.4,
+        'hidden' => 1,
     ),
-    
-    // 14. 渠道API
+
+    // 10. 渠道管理
     array(
         'id' => 'api_manage',
-        'name' => '渠道API',
+        'name' => '渠道管理',
         'icon' => 'layui-icon-link',
         'route' => '/admin/api/index',
         'permission' => 'product:api',
         'type' => 1,
-        'sort' => 14,
+        'sort' => 5.5,
     ),
-    
-    // 15. 系统管理
+
+    array(
+        'id' => 'finance_section_title',
+        'name' => '佣金结算与财务',
+        'type' => 9,
+        'sort' => 5.9,
+        'menu_title' => true,
+        'section_ids' => array('commission_settlement', 'finance_manage'),
+    ),
+
+    // 11. 佣金结算
+    array(
+        'id' => 'commission_settlement',
+        'name' => '佣金结算',
+        'icon' => 'layui-icon-rmb',
+        'route' => '',
+        'permission' => 'finance:withdraw',
+        'type' => 1,
+        'sort' => 6,
+        'children' => array(
+            array(
+                'id' => 'commission_order_manage',
+                'name' => '佣金结算订单管理',
+                'route' => '/admin/commission-settlement/orders',
+                'permission' => 'order:batch',
+                'type' => 1,
+                'sort' => 1,
+            ),
+            array(
+                'id' => 'commission_records',
+                'name' => '佣金结算记录',
+                'route' => '/admin/commission-settlement/records',
+                'permission' => 'order:batch',
+                'type' => 1,
+                'sort' => 2,
+            ),
+            array(
+                'id' => 'withdraw_manage',
+                'name' => '佣金打款',
+                'route' => '/admin/withdraw/index',
+                'permission' => 'finance:withdraw',
+                'type' => 1,
+                'sort' => 3,
+                'children' => array(
+                    array('id' => 'withdraw_approve_btn', 'name' => '审核通过', 'type' => 2, 'permission' => 'finance:approve', 'visible' => false, 'sort' => 1),
+                    array('id' => 'withdraw_reject_btn', 'name' => '审核拒绝', 'type' => 2, 'permission' => 'finance:reject', 'visible' => false, 'sort' => 2),
+                ),
+            ),
+        ),
+    ),
+
+    // 13. 财务管理
+    array(
+        'id' => 'finance_manage',
+        'name' => '财务管理',
+        'icon' => 'layui-icon-rmb',
+        'route' => '',
+        'permission' => 'finance:manage',
+        'type' => 1,
+        'sort' => 7,
+        'children' => array(
+            array(
+                'id' => 'balance_log',
+                'name' => '资金变动',
+                'route' => '/admin/balance/logs',
+                'permission' => 'finance:log',
+                'type' => 1,
+                'sort' => 1,
+            ),
+            array(
+                'id' => 'payment_records',
+                'name' => '支付记录',
+                'route' => '/admin/payment/records',
+                'permission' => 'finance:payment',
+                'plugin' => 'pay_card',
+                'type' => 1,
+                'sort' => 2,
+            ),
+            array(
+                'id' => 'product_income_stats',
+                'name' => '产品收款对账',
+                'route' => '/admin/productincome/index',
+                'permission' => 'finance:payment',
+                'plugin' => 'pay_card',
+                'type' => 1,
+                'sort' => 3,
+            ),
+              array(
+                'id' => 'payout_ledger',
+                'name' => '云账户对账单',
+                'route' => '/admin/payoutledger/index',
+                'permission' => 'finance:payout_ledger',
+                'feature' => 'yun_payout',
+                'type' => 1,
+                'sort' => 4,
+            ),
+        ),
+    ),
+
+    array(
+        'id' => 'system_section_title',
+        'name' => '系统设置与维护',
+        'type' => 9,
+        'sort' => 15.9,
+        'menu_title' => true,
+        'section_ids' => array('toolbox', 'system_manage', 'system_log', 'plugin_market'),
+    ),
+
+    // 16. 工具箱
+    array(
+        'id' => 'toolbox',
+        'name' => '工具箱',
+        'icon' => 'layui-icon-util',
+        'route' => '',
+        'permission' => 'toolbox:manage',
+        'type' => 1,
+        'sort' => 16,
+        'children' => array(
+            array(
+                'id' => 'imagetemplate',
+                'name' => '一键转图',
+                'route' => '/admin/imagetemplate/index',
+                'permission' => 'imagetemplate:manage',
+                'type' => 1,
+                'sort' => 1,
+                'plugin' => 'imagetemplate',
+            ),
+            array(
+                'id' => 'system_backup',
+                'name' => '数据备份',
+                'route' => '/admin/backup/index',
+                'permission' => 'system:backup',
+                'type' => 1,
+                'sort' => 3,
+            ),
+            array(
+                'id' => 'tool',
+                'name' => '运维工具',
+                'route' => '/admin/tool/index',
+                'permission' => 'tool:index',
+                'type' => 1,
+                'sort' => 4,
+            ),
+            array(
+                'id' => 'server_manage',
+                'name' => '服务器管理',
+                'route' => '/admin/tool/server',
+                'permission' => 'tool:server',
+                'type' => 1,
+                'sort' => 5,
+            ),
+            array(
+                'id' => 'factor_query',
+                'name' => '要素查询',
+                'route' => '/admin/tool/factor-query',
+                'permission' => 'tool:factor_query',
+                'type' => 1,
+                'sort' => 6,
+                'children' => array(
+                    array(
+                        'id' => 'factor_query_batch_api',
+                        'name' => '批量要素查询',
+                        'route' => '/admin/tool/factorquery',
+                        'permission' => 'tool:factor_query',
+                        'type' => 2,
+                        'visible' => false,
+                        'sort' => 1,
+                    ),
+                ),
+            ),
+        ),
+    ),
+
+    // 17. 系统管理
     array(
         'id' => 'system_manage',
         'name' => '系统管理',
         'icon' => 'layui-icon-set',
         'route' => '',
-        'permission' => 'system:manage',  
+        'permission' => 'system:manage',
         'type' => 1,
-        'sort' => 15,
+        'sort' => 17,
         'children' => array(
             array(
                 'id' => 'system_config',
-                'name' => '系统配置',
+                'name' => '系统设置',
                 'route' => '/admin/system/config',
                 'permission' => 'system:config',
                 'type' => 1,
                 'sort' => 1,
             ),
             array(
-                'id' => 'system_feature_policy',
-                'name' => '功能策略',
-                'route' => '/admin/featurepolicy/index',
-                'permission' => 'system:featurepolicy',
+                'id' => 'h5_config',
+                'name' => 'H5设置',
+                'route' => '/admin/configh5/index',
+                'permission' => 'h5:config',
+                'plugin' => 'h5',
                 'type' => 1,
                 'sort' => 2,
             ),
             array(
-                'id' => 'system_fadada_sign',
-                'name' => '法大大签约',
-                'route' => '/admin/fadadasign/index',
-                'permission' => 'system:fadada_sign',
-                'plugin' => 'fadada', 
+                'id' => 'shop_template_manage',
+                'name' => '店铺设置',
+                'route' => '/admin/shopmanage/index',
+                'permission' => 'shop:template',
                 'type' => 1,
                 'sort' => 3,
+            ),
+            array(
+                'id' => 'agreement_manage',
+                'name' => '协议管理',
+                'route' => '/admin/agreement/index',
+                'permission' => 'system:agreement',
+                'type' => 1,
+                'sort' => 4,
+            ),
+            array(
+                'id' => 'system_contract_sign',
+                'name' => '合同签署',
+                'route' => '/admin/contractsign/index',
+                'permission' => 'system:fadada_sign',
+                'plugin' => 'fadada',
+                'type' => 1,
+                'sort' => 5,
+            ),
+        ),
+    ),
+
+    // 18. 系统日志
+    array(
+        'id' => 'system_log',
+        'name' => '系统日志',
+        'icon' => 'layui-icon-log',
+        'route' => '',
+        'permission' => 'system:log',
+        'type' => 1,
+        'sort' => 18,
+        'children' => array(
+            array(
+                'id' => 'system_login_log',
+                'name' => '登录日志',
+                'icon' => 'layui-icon-username',
+                'route' => '/admin/systemlog/login',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 1,
+            ),
+            array(
+                'id' => 'system_operation_log',
+                'name' => '操作日志',
+                'icon' => 'layui-icon-edit',
+                'route' => '/admin/systemlog/operation',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 2,
+            ),
+            array(
+                'id' => 'system_permission_log',
+                'name' => '权限日志',
+                'icon' => 'layui-icon-auz',
+                'route' => '/admin/systemlog/permission',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 3,
+            ),
+            array(
+                'id' => 'system_fund_log',
+                'name' => '资金日志',
+                'icon' => 'layui-icon-rmb',
+                'route' => '/admin/systemlog/fund',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 4,
+            ),
+            array(
+                'id' => 'system_api_log',
+                'name' => '接口日志',
+                'icon' => 'layui-icon-link',
+                'route' => '/admin/systemlog/api',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 5,
+            ),
+            array(
+                'id' => 'system_security_log',
+                'name' => '安全拦截日志',
+                'icon' => 'layui-icon-vercode',
+                'route' => '/admin/systemlog/security',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 6,
+            ),
+            array(
+                'id' => 'system_blacklist_log',
+                'name' => '黑名单日志',
+                'icon' => 'layui-icon-username',
+                'route' => '/admin/systemlog/blacklist',
+                'permission' => 'system:log',
+                'type' => 1,
+                'sort' => 7,
             ),
             array(
                 'id' => 'sms_log',
@@ -516,28 +658,12 @@ return array(
                 'route' => '/admin/sms/logs',
                 'permission' => 'system:sms',
                 'type' => 1,
-                'sort' => 4,
-            ),
-            array(
-                'id' => 'system_backup',
-                'name' => '数据备份',
-                'route' => '/admin/backup/index',
-                'permission' => 'system:backup',
-                'type' => 1,
-                'sort' => 5,
-            ),
-            array(
-                'id' => 'tool',
-                'name' => '运维工具',
-                'route' => '/admin/tool/index',
-                'permission' => 'tool:index',
-                'type' => 1,
-                'sort' => 6,
+                'sort' => 8,
             ),
         ),
     ),
-    
-    // 16. 插件市场
+
+    // 20. 插件市场
     array(
         'id' => 'plugin_market',
         'name' => '插件市场',
@@ -545,10 +671,6 @@ return array(
         'route' => '/admin/pluginmarket/index',
         'permission' => 'plugin:market',
         'type' => 1,
-        'sort' => 16,
+        'sort' => 20,
     ),
 );
-
-
-
-

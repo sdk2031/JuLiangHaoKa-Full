@@ -373,25 +373,42 @@ class Callback
                 if (!empty($currentOrder['agent_id'])) {
                     \app\common\helper\AgentStatsHelper::incrementActivationStats($currentOrder['agent_id']);
                 }
-                // 记录佣金（待结算状态）
-                // 从settleDetails取month=0的settleReward作为结算佣金（顶层settleReward是month=-99的秒返金额）
-                $settleReward = $this->extractSettleReward($callbackData);
-                if ($settleReward > 0) {
-                    $this->callGuangmengyunSettlement($currentOrder, $settleReward);
-                } else {
-                    $this->callActivatedRecordService($currentOrder);
-                }
+                $this->processSettlementWithGuangmengyunReward($currentOrder, '4', $callbackData);
             }
 
             // 已结算状态触发佣金结算（需要开启同步结算开关）
-            if ($newStatus === '5' && $oldStatus !== '5' && $syncSettlementEnabled) {
-                $settleReward = $this->extractSettleReward($callbackData);
-                if ($settleReward > 0) {
-                    $this->callGuangmengyunSettlement($currentOrder, $settleReward);
-                } else {
-                    $this->callCommissionService($currentOrder);
-                }
+            if ($newStatus === '5' && $syncSettlementEnabled) {
+                $this->processSettlementWithGuangmengyunReward($currentOrder, '5', $callbackData);
             }
+        }
+    }
+
+    /**
+     * 广梦云结算：佣金走广梦云专用settleReward逻辑，付费卡加价单独补处理。
+     */
+    private function processSettlementWithGuangmengyunReward($order, $status, $callbackData)
+    {
+        $orderNo = isset($order['order_no']) ? $order['order_no'] : '';
+        try {
+            $settleReward = $this->extractSettleReward($callbackData);
+            if ($settleReward > 0) {
+                $this->callGuangmengyunSettlement($order, $settleReward);
+            } elseif ($status === '4') {
+                $this->callActivatedRecordService($order);
+            } else {
+                $this->callCommissionService($order);
+            }
+
+            $markupService = new \app\common\service\MarkupSettlementService();
+            if ($status === '4') {
+                $markupResult = $markupService->recordPendingMarkup($order['id']);
+                trace('广梦云API付费卡加价待结算处理 - 订单号: ' . $orderNo . ', 信息: ' . ($markupResult['message'] ?? ''), !empty($markupResult['success']) ? 'info' : 'error');
+            } elseif ($status === '5') {
+                $markupResult = $markupService->processMarkupSettlement($order['id']);
+                trace('广梦云API付费卡加价结算处理 - 订单号: ' . $orderNo . ', 信息: ' . ($markupResult['message'] ?? ''), !empty($markupResult['success']) ? 'info' : 'error');
+            }
+        } catch (\Exception $e) {
+            trace('广梦云API结算处理异常 - 订单号: ' . $orderNo . ', 错误: ' . $e->getMessage(), 'error');
         }
     }
 

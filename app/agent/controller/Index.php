@@ -4,11 +4,16 @@ namespace app\agent\controller;
 use app\common\helper\SystemConfig;
 use app\common\service\AgentService;
 use app\common\service\AgentDomainBrandService;
+use app\common\service\AppDistributionService;
+use app\common\service\CommissionCalculationService;
 use app\common\service\EmployeeAgentService;
+use app\common\service\AgentDataScopeService;
+use app\common\service\FeatureAccessService;
+use app\common\service\ImageTemplateService;
+use app\common\service\ShopPublicLinkService;
+use app\admin\service\MenuVisibilityService;
 use think\facade\Db;
 use think\facade\View;
-use think\facade\Session;
-
 class Index extends Base
 {
     /**
@@ -18,57 +23,25 @@ class Index extends Base
      */
     protected function checkPluginsStatus($pluginKeys)
     {
-        $result = [];
-        try {
-            $enabled = Db::name('plugin_license')
-                ->whereIn('plugin_key', $pluginKeys)
-                ->where('status', 1)
-                ->column('plugin_key');
-            foreach ($pluginKeys as $key) {
-                $result[$key] = in_array($key, $enabled);
-            }
-        } catch (\Exception $e) {
-            foreach ($pluginKeys as $key) {
-                $result[$key] = false;
-            }
-        }
-        return $result;
+        return FeatureAccessService::getPluginStatuses((array)$pluginKeys);
     }
 
     // 主框架页面📝
     public function main()
     {
-        // 确保Session启动
-        if (session_status() == PHP_SESSION_NONE) {
-            $sessionPath = app()->getRuntimePath() . 'session';
-            if (!is_dir($sessionPath)) {
-                mkdir($sessionPath, 0755, true);
-            }
-            session_save_path($sessionPath);
-            session_start();
-        }
-
-        // 检查登录状态
-        $agentId = Session::get('agent_id');
-
-
+        $agentId = $this->getAgentId();
         if (!$agentId) {
-            // 未登录，跳转到登录页面
-            return redirect('/agent/login');
+            // 未登录，跳转到 Vue 登录页面
+            return redirect($this->vueLoginUrl('agent'));
         }
 
         if (!AgentDomainBrandService::canAgentAccessCurrentDomain((int)$agentId)) {
-            Session::delete('agent_id');
-            Session::delete('agent_username');
-            Session::delete('agent_info');
-            if (isset($_COOKIE['agent_token'])) {
-                setcookie('agent_token', '', time() - 3600, '/');
-            }
-            return redirect('/agent/login');
+            $this->clearAgentAuth();
+            return redirect($this->vueLoginUrl('agent'));
         }
 
 
-        // 获取代理商基本信息用于显示（关联密价等级表、分销等级）
+        // 获取代理商基本信息用于显示（关联商务政策表、分销等级）
         $distributionMode = strtolower(trim((string) SystemConfig::get('distribution_level_mode', 'legacy')));
         $isFixedDistributionMode = ($distributionMode === 'fixed');
         $agent = Db::table('agents')
@@ -80,8 +53,8 @@ class Index extends Base
             ->where('a.id', $agentId)
             ->find();
         if (!$agent) {
-            session_destroy();
-            return redirect('/agent/login');
+            $this->clearAgentAuth();
+            return redirect($this->vueLoginUrl('agent'));
         }
         
         // 处理代理等级显示
@@ -138,6 +111,17 @@ class Index extends Base
             $shopInfo['shop_code'] = $newShopCode;
         }
 
+        $shopAvailable = true;
+        $shopUnavailableMessage = '';
+
+        $todayVisitCount = 0;
+        if (!empty($shopInfo['id'])) {
+            $todayVisitCount = (int)Db::table('agent_shop_visits')
+                ->where('shop_id', (int)$shopInfo['id'])
+                ->where('visit_date', date('Y-m-d'))
+                ->count();
+        }
+
         $shopSummary = [
             'shop_name' => $shopInfo['shop_name'] ?? '未设置',
             'shop_code' => $shopInfo['shop_code'] ?? '',
@@ -145,9 +129,11 @@ class Index extends Base
             'status_text' => ((int)($shopInfo['status'] ?? 1) === 1) ? '正常' : '异常',
             'shop_code_display' => $shopInfo['shop_code'] ?? '',
             'agent_id' => (int)$agentId,
-            'today_visits' => (int)($shopInfo['today_visits'] ?? 0),
+            'today_visits' => $todayVisitCount,
             'today_orders' => 0,
-            'shop_url' => !empty($shopInfo['shop_code']) ? request()->domain() . '/index/shop/index/shop_code/' . $shopInfo['shop_code'] : ''
+            'shop_url' => !empty($shopInfo['shop_code']) ? $this->buildFrontendShopUrl((string)$shopInfo['shop_code']) : '',
+            'is_available' => 1,
+            'unavailable_message' => '',
         ];
 
         if (!empty($shopSummary['shop_code'])) {
@@ -163,12 +149,30 @@ class Index extends Base
         if (!empty($agentCapability['order_submit_required']) && empty($agentCapability['is_verified'])) {
             $shopSummary['status_text'] = '异常';
             $shopSummary['shop_code_display'] = '实名后可用';
+            $shopAvailable = false;
+            $shopUnavailableMessage = $agentCapability['order_submit_block_message'] ?? '请先完成实名认证';
         } elseif (!empty($agentCapability['contract_pending_review'])) {
             $shopSummary['status_text'] = '异常';
             $shopSummary['shop_code_display'] = '审核后可用';
+            $shopAvailable = false;
+            $shopUnavailableMessage = $agentCapability['order_submit_block_message'] ?? '签署中';
         } elseif (!empty($agentCapability['contract_pending_payment'])) {
             $shopSummary['status_text'] = '异常';
             $shopSummary['shop_code_display'] = '签约后可用';
+            $shopAvailable = false;
+            $shopUnavailableMessage = $agentCapability['order_submit_block_message'] ?? '请先完成合同签署';
+        }
+
+        if (!$shopAvailable) {
+            $shopSummary['shop_url'] = '';
+            $shopSummary['is_available'] = 0;
+            $shopSummary['unavailable_message'] = $shopUnavailableMessage;
+        }
+
+        try {
+            $agentAppDistributionPages = (new AppDistributionService())->listPublishedForAgent(8);
+        } catch (\Throwable $e) {
+            $agentAppDistributionPages = [];
         }
 
         $upstreamContact = [
@@ -193,6 +197,7 @@ class Index extends Base
         View::assign('agent', $agent);
         View::assign('config', $config);
         View::assign('shopSummary', $shopSummary);
+        View::assign('agentAppDistributionPages', $agentAppDistributionPages);
         View::assign('upstreamContact', $upstreamContact);
         View::assign('agentCapability', $agentCapability);
         View::assign('showAdminTab', $showAdminTab);
@@ -244,23 +249,12 @@ class Index extends Base
     // 默认首页 - 检查登录状态并跳转到合适页面
     public function index()
     {
-        // 确保Session启动
-        if (session_status() == PHP_SESSION_NONE) {
-            $sessionPath = app()->getRuntimePath() . 'session';
-            if (!is_dir($sessionPath)) {
-                mkdir($sessionPath, 0755, true);
-            }
-            session_save_path($sessionPath);
-            session_start();
-        }
-
-        // 检查登录状态
-        $agentId = Session::get('agent_id');
+        $agentId = $this->getAgentId();
 
         if (!$agentId) {
-            // 未登录，跳转到登录页面
+            // 未登录，跳转到 Vue 登录页面；旧 HTML 登录页仅保留 _legacy=1 参考。
             error_log('Index page - No agent_id found, redirecting to login');
-            return redirect('/agent/login');
+            return redirect($this->vueLoginUrl('agent'));
         }
 
         error_log('Index page - Agent logged in, redirecting to main');
@@ -269,19 +263,31 @@ class Index extends Base
         return redirect('/agent/index/main');
     }
 
+    protected function vueLoginUrl(string $loginType): string
+    {
+        $path = $loginType === 'agent' ? '/#/agent' : '/#/admin';
+        $scheme = request()->header('X-Forwarded-Proto') ?: request()->scheme();
+        $host = request()->header('X-Forwarded-Host') ?: request()->server('HTTP_HOST', request()->host());
+        if (preg_match('/:(9000|8000)$/', $host)) {
+            $host = preg_replace('/:(9000|8000)$/', ':3006', $host);
+            return $scheme . '://' . $host . $path;
+        }
+        return $path;
+    }
+
     // 首页内容（在iframe中显示）
     public function home()
     {
         $agentId = $this->getAgentId();
 
         // 获取代理商信息
-        $agent = Session::get('agent_info');
+        $agent = $this->getAgentInfo();
         if (!$agent) {
             // 如果Session中没有完整信息，从数据库获取
             $agent = Db::table('agents')->where('id', $agentId)->find();
             if (!$agent) {
-                session_destroy();
-                return redirect('/agent/login');
+                $this->clearAgentAuth();
+                return redirect($this->vueLoginUrl('agent'));
             }
         }
 
@@ -421,6 +427,488 @@ class Index extends Base
     }
 
     /**
+     * Vue 代理后台：当前代理信息
+     */
+    public function profile()
+    {
+        $agentId = $this->getAgentId();
+        if (empty($agentId)) {
+            return json(['code' => 401, 'msg' => '请先登录', 'data' => null]);
+        }
+
+        $agent = Db::table('agents')
+            ->where('id', $agentId)
+            ->find();
+
+        if (!$agent) {
+            return json(['code' => 401, 'msg' => '代理不存在', 'data' => null]);
+        }
+
+        return json([
+            'code' => 0,
+            'msg' => '获取成功',
+            'data' => [
+                'userId' => (int)$agent['id'],
+                'userName' => (string)$agent['username'],
+                'email' => (string)($agent['email'] ?? ''),
+                'avatar' => (string)($agent['avatar'] ?? ''),
+                'nickname' => (string)(($agent['nickname'] ?? '') ?: $agent['username']),
+                'roles' => ['R_AGENT'],
+                'buttons' => [],
+            ],
+        ]);
+    }
+
+    /**
+     * Vue 代理后台：插件启用状态
+     */
+    public function pluginStatus()
+    {
+        return json([
+            'code' => 0,
+            'msg' => '获取成功',
+            'data' => FeatureAccessService::getClientStatusMap(),
+        ]);
+    }
+
+    /**
+     * Vue 代理后台：菜单数据
+     */
+    public function vueMenus()
+    {
+        $agentId = $this->getAgentId();
+        $agentCapability = \app\common\service\IdcardService::getAgentCapabilityState((int)$agentId);
+        $contractSignEnabled = !empty($agentCapability['fadada_enabled']);
+        $showAgentManageMenu = !empty($agentCapability['show_agent_manage_menu']);
+        $showRealnameTodo = empty($agentCapability['is_verified']);
+        $showSignTodo = $contractSignEnabled && !empty($agentCapability['show_contract_task_card']);
+        $todoBadgeMeta = ['showTextBadge' => '待完成'];
+
+        $menus = [
+            [
+                'path' => '/agent/dashboard',
+                'name' => 'AgentDashboard',
+                'component' => '/index/index',
+                'redirect' => '/agent/dashboard/index',
+                'meta' => [
+                    'title' => '控制台',
+                    'icon' => 'ri:dashboard-3-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentDashboardIndex',
+                        'component' => '/agent/dashboard/index',
+                        'meta' => [
+                            'title' => '控制台',
+                            'icon' => 'ri:dashboard-3-line',
+                            'isHide' => true,
+                            'keepAlive' => false,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/product',
+                'name' => 'AgentProduct',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '商品管理',
+                    'icon' => 'ri:archive-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentProductIndex',
+                        'component' => '/agent/product/index',
+                        'meta' => [
+                            'title' => '产品列表',
+                            'icon' => 'ri:archive-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/order',
+                'name' => 'AgentOrder',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '订单管理',
+                    'icon' => 'ri:file-list-3-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentOrderIndex',
+                        'component' => '/agent/order/index',
+                        'meta' => [
+                            'title' => '订单列表',
+                            'icon' => 'ri:file-list-3-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/team',
+                'name' => 'AgentTeam',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '团队管理',
+                    'icon' => 'ri:team-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentTeamIndex',
+                        'component' => '/agent/team/index',
+                        'meta' => [
+                            'title' => '我的团队',
+                            'icon' => 'ri:team-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/withdraw',
+                'name' => 'AgentWithdraw',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '提现管理',
+                    'icon' => 'ri:money-cny-circle-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentWithdrawIndex',
+                        'component' => '/agent/withdraw/index',
+                        'meta' => [
+                            'title' => '提现记录',
+                            'icon' => 'ri:money-cny-circle-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/balance',
+                'name' => 'AgentBalance',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '资金明细',
+                    'icon' => 'ri:wallet-3-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'logs',
+                        'name' => 'AgentBalanceLogs',
+                        'component' => '/agent/balance/logs',
+                        'meta' => [
+                            'title' => '余额明细',
+                            'icon' => 'ri:exchange-cny-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/activity',
+                'name' => 'AgentActivity',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '活动中心',
+                    'icon' => 'ri:gift-line',
+                    'roles' => ['R_AGENT'],
+                    'plugin' => 'marketing',
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentActivityIndex',
+                        'component' => '/agent/activity/index',
+                        'meta' => [
+                            'title' => '营销活动',
+                            'icon' => 'ri:gift-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/shop',
+                'name' => 'AgentShop',
+                'component' => '/index/index',
+                'redirect' => '/agent/shop/index',
+                'meta' => [
+                    'title' => '店铺管理',
+                    'icon' => 'ri:store-2-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentShopIndex',
+                        'component' => '/agent/shop/index',
+                        'meta' => [
+                            'title' => '店铺设置',
+                            'icon' => 'ri:store-2-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                    [
+                        'path' => 'stats',
+                        'name' => 'AgentShopStats',
+                        'component' => '/agent/shop/index',
+                        'meta' => [
+                            'title' => '访问日志',
+                            'icon' => 'ri:bar-chart-2-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/notice',
+                'name' => 'AgentNotice',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '信息中心',
+                    'icon' => 'ri:notification-3-line',
+                    'roles' => ['R_AGENT'],
+                ],
+                'children' => [
+                    [
+                        'path' => 'announcement',
+                        'name' => 'AgentNoticeAnnouncement',
+                        'component' => '/agent/notice/announcement',
+                        'meta' => [
+                            'title' => '公告列表',
+                            'icon' => 'ri:notification-3-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                    [
+                        'path' => 'message',
+                        'name' => 'AgentNoticeMessage',
+                        'component' => '/agent/notice/message',
+                        'meta' => [
+                            'title' => '站内信',
+                            'icon' => 'ri:mail-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                    [
+                        'path' => 'article',
+                        'name' => 'AgentNoticeArticle',
+                        'component' => '/agent/notice/article',
+                        'meta' => [
+                            'title' => '帮助文档',
+                            'icon' => 'ri:article-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/ticket',
+                'name' => 'AgentTicket',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '工单管理',
+                    'icon' => 'ri:customer-service-2-line',
+                    'roles' => ['R_AGENT'],
+                    'plugin' => 'workorder',
+                ],
+                'children' => [
+                    [
+                        'path' => 'index',
+                        'name' => 'AgentTicketIndex',
+                        'component' => '/agent/ticket/index',
+                        'meta' => [
+                            'title' => '我的工单',
+                            'icon' => 'ri:customer-service-2-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/apimanage',
+                'name' => 'AgentApiManage',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => 'API对接',
+                    'icon' => 'ri:code-box-line',
+                    'roles' => ['R_AGENT'],
+                    'plugin' => 'down_api',
+                ],
+                'children' => [
+                    [
+                        'path' => 'settings',
+                        'name' => 'AgentApiManageSettings',
+                        'component' => '/agent/apimanage/index',
+                        'meta' => [
+                            'title' => 'API对接',
+                            'icon' => 'ri:key-2-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/agent/account',
+                'name' => 'AgentProfile',
+                'component' => '/index/index',
+                'meta' => [
+                    'title' => '个人中心',
+                    'icon' => 'ri:user-settings-line',
+                    'roles' => ['R_AGENT'],
+                    'keepMenuGroup' => true,
+                ],
+                'children' => [
+                    [
+                        'path' => '/agent/profile/index',
+                        'name' => 'AgentProfileIndex',
+                        'component' => '/agent/profile/index',
+                        'meta' => array_merge([
+                            'title' => '个人资料',
+                            'icon' => 'ri:user-settings-line',
+                            'keepAlive' => true,
+                        ], ($showRealnameTodo || $showSignTodo) ? $todoBadgeMeta : []),
+                    ],
+                    [
+                        'path' => '/agent/idcard/index',
+                        'name' => 'AgentIdcardIndex',
+                        'component' => '/agent/idcard/index',
+                        'meta' => [
+                            'title' => '实名认证',
+                            'icon' => 'ri:verified-badge-line',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                    [
+                        'path' => '/agent/contractsign/index',
+                        'name' => 'AgentContractSignIndex',
+                        'component' => '/agent/contractsign/index',
+                        'meta' => [
+                            'title' => '合同签署',
+                            'icon' => 'ri:contract-line',
+                            'feature' => 'contract_sign',
+                            'keepAlive' => true,
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        if (!$contractSignEnabled) {
+            foreach ($menus as $menuIndex => $menu) {
+                if (($menu['name'] ?? '') !== 'AgentProfile' || empty($menu['children']) || !is_array($menu['children'])) {
+                    continue;
+                }
+                $menu['children'] = array_values(array_filter($menu['children'], function ($child) {
+                    return ($child['path'] ?? '') !== '/agent/contractsign/index';
+                }));
+                $menus[$menuIndex] = $menu;
+                break;
+            }
+        }
+        if (!$showAgentManageMenu) {
+            $menus = array_values(array_filter($menus, function ($menu) {
+                return ($menu['name'] ?? '') !== 'AgentTeam';
+            }));
+        }
+
+        $menus = $this->flattenAgentVueMenus(MenuVisibilityService::filterVueRouteMenus($menus));
+
+        return json([
+            'code' => 0,
+            'msg' => '获取成功',
+            'data' => $menus,
+        ]);
+    }
+
+    /**
+     * 将代理后台 Vue 菜单拍平成一级菜单。
+     */
+    private function flattenAgentVueMenus(array $menus): array
+    {
+        $result = [];
+        foreach ($menus as $menu) {
+            $item = is_array($menu) ? $menu : [];
+            $children = isset($item['children']) && is_array($item['children']) ? $item['children'] : [];
+
+            if (!empty($children) && empty($item['meta']['keepMenuGroup'])) {
+                foreach ($children as $child) {
+                    $flatItem = $this->buildFlatAgentVueMenuItem($item, is_array($child) ? $child : []);
+                    if (!empty($flatItem)) {
+                        $result[] = $flatItem;
+                    }
+                }
+                continue;
+            }
+
+            unset($item['children'], $item['redirect']);
+            if (isset($item['meta']) && is_array($item['meta'])) {
+                unset($item['meta']['isHide']);
+                unset($item['meta']['keepMenuGroup']);
+            }
+            if (!empty($children)) {
+                $item['children'] = array_map(function ($child) {
+                    if (isset($child['meta']) && is_array($child['meta'])) {
+                        unset($child['meta']['isHide']);
+                    }
+                    return $child;
+                }, $children);
+            }
+            $result[] = $item;
+        }
+
+        return $result;
+    }
+
+    private function buildFlatAgentVueMenuItem(array $parent, array $child): array
+    {
+        $parentMeta = isset($parent['meta']) && is_array($parent['meta']) ? $parent['meta'] : [];
+        $childMeta = isset($child['meta']) && is_array($child['meta']) ? $child['meta'] : [];
+        $meta = array_merge($parentMeta, $childMeta);
+        unset($meta['isHide']);
+
+        $path = $this->joinVueMenuPath((string)($parent['path'] ?? ''), (string)($child['path'] ?? ''));
+        if ($path === '') {
+            return [];
+        }
+
+        return [
+            'path' => $path,
+            'name' => (string)($child['name'] ?? $parent['name'] ?? ''),
+            'component' => (string)($child['component'] ?? $parent['component'] ?? ''),
+            'meta' => $meta,
+        ];
+    }
+
+    private function joinVueMenuPath(string $parentPath, string $childPath): string
+    {
+        $childPath = trim($childPath);
+        if ($childPath === '') {
+            return $parentPath;
+        }
+        if (strpos($childPath, '/') === 0) {
+            return $childPath;
+        }
+
+        return rtrim($parentPath, '/') . '/' . ltrim($childPath, '/');
+    }
+
+    /**
      * 获取系统配置
      */
     private function getSystemConfig()
@@ -471,6 +959,23 @@ class Index extends Base
     }
 
     /**
+     * Vue 代理后台：首页统计数据
+     */
+    public function dashboardData()
+    {
+        $agentId = $this->getAgentId();
+        if (empty($agentId)) {
+            return json(['code' => 401, 'msg' => '请先登录', 'data' => null]);
+        }
+
+        return json([
+            'code' => 0,
+            'msg' => '获取成功',
+            'data' => $this->getDashboardData($agentId),
+        ]);
+    }
+
+    /**
      * 获取dashboard数据
      */
     private function getDashboardData($agentId)
@@ -480,13 +985,21 @@ class Index extends Base
         $marketingPluginEnabled = !empty($pluginStatus['marketing']);
         $employeeAgentService = new EmployeeAgentService();
         $employeeContext = $employeeAgentService->getEmployeeContext((int)$agentId);
-        $employeeTeamStats = !empty($employeeContext['is_employee']) ? $employeeAgentService->getTeamStats((int)$agentId) : [];
+        $scopeService = new AgentDataScopeService();
+        $scopeProfile = $scopeService->getScopeProfile((int)$agentId);
+        $hasTeamDashboard = !empty($scopeProfile['can_view_all_descendants']);
+        $teamDashboardMode = !empty($employeeContext['is_employee']) ? 'employee' : ($hasTeamDashboard ? 'major_agent' : 'self');
+        $teamStats = $hasTeamDashboard ? $employeeAgentService->getTeamStats((int)$agentId) : [];
 
         // 将agent_id转换为字符串，因为order表中agent_id是varchar类型
         $agentIdStr = (string)$agentId;
 
         // 获取代理信息（包含统计字段）
         $agentInfo = Db::table('agents')->where('id', $agentId)->find();
+        $agentProfile = $this->buildAgentTopbarProfile((int)$agentId, (array)$agentInfo);
+        $agentCreateTime = (int)($agentInfo['create_time'] ?? 0);
+        $agentCreateTimestamp = $agentCreateTime > 9999999999 ? (int)floor($agentCreateTime / 1000) : $agentCreateTime;
+        $joinedDays = $agentCreateTimestamp > 0 ? max(1, (int)floor((time() - $agentCreateTimestamp) / 86400) + 1) : 1;
 
         // 获取时间字符串（数据库中create_time是字符串格式）
         $last7DaysStr = date('Y-m-d 00:00:00', strtotime('-7 days'));
@@ -511,9 +1024,23 @@ class Index extends Base
         }
         $shopId = $shopInfo ? $shopInfo['id'] : 0;
 
-        // 1. 访问量数据 - 从agent_shop表获取
-        $todayVisits = $shopInfo ? $shopInfo['today_visits'] : 0;
-        $totalVisits = $shopInfo ? $shopInfo['total_visits'] : 0;
+        // 1. 访问量数据 - 与销售总览趋势图保持同一口径，从访问明细表实时统计
+        $todayVisits = 0;
+        $totalVisits = 0;
+        $shopMonthVisits = 0;
+        if ($shopId > 0) {
+            $todayVisits = (int)Db::table('agent_shop_visits')
+                ->where('shop_id', $shopId)
+                ->where('visit_date', date('Y-m-d'))
+                ->count();
+            $shopMonthVisits = (int)Db::table('agent_shop_visits')
+                ->where('shop_id', $shopId)
+                ->where('visit_date', 'like', date('Y-m') . '%')
+                ->count();
+            $totalVisits = (int)Db::table('agent_shop_visits')
+                ->where('shop_id', $shopId)
+                ->count();
+        }
 
         // 2. 今日订单量
         $todayStartStr = date('Y-m-d 00:00:00');
@@ -562,7 +1089,7 @@ class Index extends Base
         // 顶部概览数据
         $estimatedCommissionTotal = (float)Db::table('order')
             ->where('agent_id', $agentIdStr)
-            ->whereNotIn('order_status', [6, 7])
+            ->where('order_status', '<>', 7)
             ->sum('commission');
         $refundOrderCount = (int)Db::table('order')
             ->where('agent_id', $agentIdStr)
@@ -626,7 +1153,7 @@ class Index extends Base
         if (empty($overviewReminders)) {
             $overviewReminders[] = [
                 'title' => '状态正常',
-                'content' => '最近7天暂无待传照片、待发货订单' . ($workorderPluginEnabled ? '和待处理工单' : '') . '，当前业务状态正常。',
+                'content' => '最近7天暂无待传照片、待发货订单' . ($workorderPluginEnabled ? '和待回复工单' : '') . '，当前业务状态正常。',
                 'url' => '',
                 'link_text' => '查看详情'
             ];
@@ -687,10 +1214,11 @@ class Index extends Base
             ->where('create_time', '<=', strtotime($monthEndStr))
             ->sum('amount');
 
-        // 本月已结算佣金（包括订单佣金、上级抽成、密价奖励）
+        // 本月已结算佣金（包括订单佣金、上级抽成、商务奖励）
         $monthSettledCommission = Db::table('agent_balance_logs')
             ->where('agent_id', $agentId)
             ->where('type', 'in')
+            ->where('status', 1)
             ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
             ->where('create_time', '>=', strtotime($monthStartStr))
             ->where('create_time', '<=', strtotime($monthEndStr))
@@ -703,10 +1231,11 @@ class Index extends Base
             ->where('status', 1)
             ->sum('amount');
 
-        // 总已结算佣金（包括订单佣金、上级抽成、密价奖励）
+        // 总已结算佣金（包括订单佣金、上级抽成、商务奖励）
         $totalSettledCommission = Db::table('agent_balance_logs')
             ->where('agent_id', $agentId)
             ->where('type', 'in')
+            ->where('status', 1)
             ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
             ->sum('amount');
 
@@ -715,7 +1244,7 @@ class Index extends Base
             ->where('status', 1)
             ->order('create_time', 'desc')
             ->limit(10)
-            ->field('id,name,create_time')
+            ->field('id,name,create_time,commission,product_image,detail_images')
             ->select();
 
         $todayLatestProducts = Db::table('product')
@@ -724,7 +1253,7 @@ class Index extends Base
             ->where('create_time', '<=', $todayEndStr)
             ->order('create_time', 'desc')
             ->limit(10)
-            ->field('id,name,create_time')
+            ->field('id,name,create_time,commission,product_image,detail_images')
             ->select();
 
         // 7. 获取公告列表（按排序和创建时间）
@@ -764,17 +1293,26 @@ class Index extends Base
         }
 
         // 格式化产品数据
-        $formatTimelineProducts = function ($products) {
+        $formatTimelineProducts = function ($products) use ($agentId) {
             $result = [];
+            $commissionService = new CommissionCalculationService();
             foreach ($products as $product) {
                 $createTime = strtotime((string)($product['create_time'] ?? ''));
                 if ($createTime <= 0) {
                     $createTime = time();
                 }
+                $commissionInfo = $commissionService->calculateProductPageCommission(
+                    (float)($product['commission'] ?? 0),
+                    (int)$agentId,
+                    (int)($product['id'] ?? 0)
+                );
 
                 $result[] = [
                     'id' => (int)($product['id'] ?? 0),
                     'name' => (string)($product['name'] ?? ''),
+                    'product_image' => (string)($product['product_image'] ?? ''),
+                    'display_image' => (string)(ImageTemplateService::getDisplayImage($product) ?: ''),
+                    'commission_display' => (string)($commissionInfo['commission_display'] ?? number_format((float)($commissionInfo['base_commission'] ?? 0), 2)),
                     'time' => date('Y-m-d', $createTime),
                     'timestamp' => $createTime
                 ];
@@ -867,10 +1405,10 @@ class Index extends Base
         // 格式化工单数据
         $formattedTickets = [];
         $ticketStatusMap = [
-            1 => ['text' => '待处理', 'color' => '#ff9800'],
+            1 => ['text' => '待回复', 'color' => '#ff9800'],
             2 => ['text' => '处理中', 'color' => '#2196f3'],
-            3 => ['text' => '已解决', 'color' => '#4caf50'],
-            4 => ['text' => '已关闭', 'color' => '#9e9e9e']
+            3 => ['text' => '已结束', 'color' => '#9e9e9e'],
+            4 => ['text' => '已结束', 'color' => '#9e9e9e']
         ];
         $ticketCategoryMap = [
             1 => '技术支持',
@@ -898,14 +1436,16 @@ class Index extends Base
         // 获取店铺基本信息
         $shopName = $shopInfo ? $shopInfo['shop_name'] : '未设置';
         $shopCode = $shopInfo ? $shopInfo['shop_code'] : '';
-        $shopUrl = $shopCode ? request()->domain() . '/index/shop/index/shop_code/' . $shopCode : '';
+        $shopUrl = $shopCode ? $this->buildFrontendShopUrl((string)$shopCode) : '';
         $shopTotalOrders = (int)($shopInfo['total_orders'] ?? 0);
-        $shopMonthVisits = (int)($shopInfo['month_visits'] ?? 0);
         $shopMonthOrders = (int)($shopInfo['month_orders'] ?? 0);
         $shopTodayOrders = (int)($shopInfo['today_orders'] ?? 0);
         $verifiedAgents = (int)Db::table('agents')->where('parent_id', $agentId)->where('is_verified', 1)->count();
         $unverifiedAgents = max(0, (int)$totalAgents - $verifiedAgents);
         $shopTrendDatasets = $this->buildAgentTrendDatasets((int)$agentId);
+        $teamTrendDatasets = $hasTeamDashboard
+            ? $this->buildTeamTrendDatasets((int)$agentId)
+            : [];
         $shopMetricSets = $this->buildAgentMetricSets((int)$agentId, $shopInfo);
 
         // 获取上级代理信息（agentInfo已在函数开头获取）
@@ -926,6 +1466,20 @@ class Index extends Base
             }
         }
 
+        $agentAppDistributionPages = [];
+        try {
+            $agentAppDistributionPages = (new AppDistributionService())->listPublishedForAgent(1);
+        } catch (\Throwable $e) {
+            $agentAppDistributionPages = [];
+        }
+        $agentAppDistributionPage = $agentAppDistributionPages[0] ?? [];
+        $agentCapability = \app\common\service\IdcardService::getAgentCapabilityState((int)$agentId);
+        $shopUnavailableMessage = '';
+        if (empty($agentCapability['can_order_submit'])) {
+            $shopUrl = '';
+            $shopUnavailableMessage = (string)($agentCapability['order_submit_block_message'] ?? '请先完成实名认证后再使用店铺推广');
+        }
+
         // 准备数据
         $dashboard = [
             // 订单量（本月）/ 总订单量（全部）- 从agents表读取
@@ -939,12 +1493,38 @@ class Index extends Base
             
             // 预估佣金（本月）/ 总预估佣金（全部）
             // 待结算佣金（本月）/ 总待结算佣金（全部）
+            'estimated_commission' => '¥' . number_format($estimatedCommissionTotal, 2),
             'month_pending_commission' => '¥' . number_format($monthPendingCommission, 2),
             'total_pending_commission' => '¥' . number_format($totalPendingCommission, 2),
             
             // 已结算佣金（本月）/ 总已结算佣金（全部）
             'month_settled_commission' => '¥' . number_format($monthSettledCommission, 2),
             'total_settled_commission' => '¥' . number_format($totalSettledCommission, 2),
+            'total_earned_commission' => '¥' . number_format((float)($agentInfo['total_money'] ?? 0), 2),
+            'current_balance' => '¥' . number_format((float)($agentInfo['balance'] ?? 0), 2),
+            'joined_days' => $joinedDays,
+            'agent_name' => (string)($agentInfo['username'] ?? '代理商'),
+            'agent_topbar' => [
+                'agent_id' => (int)$agentId,
+                'username' => (string)($agentInfo['username'] ?? ''),
+                'real_name' => (string)($agentInfo['real_name'] ?? ''),
+                'display_name' => !empty($agentCapability['is_verified']) && trim((string)($agentInfo['real_name'] ?? '')) !== ''
+                    ? (string)$agentInfo['real_name']
+                    : (string)($agentInfo['username'] ?? ''),
+                'agent_level_text' => $agentProfile['agent_level_text'],
+                'secret_price_level_name' => $agentProfile['secret_price_level_name'],
+                'secret_price_level_icon' => $agentProfile['secret_price_level_icon'],
+                'is_employee' => !empty($employeeContext['is_employee']) ? 1 : 0,
+                'employee_code' => (string)($employeeContext['employee_code'] ?? ''),
+                'app_distribution_url' => (string)($agentAppDistributionPage['distribution_url'] ?? ''),
+                'agent_capability' => $agentCapability,
+                'upstream_contact' => [
+                    'is_root' => empty($agentInfo['parent_id']),
+                    'parent_name' => $parentAgentInfo,
+                    'contact_phone' => $parentContactPhone,
+                    'service_qrcode' => $parentServiceQrcode,
+                ],
+            ],
 
             // 新增代理商（本月）/ 总代理商（全部）
             'month_new_agents' => $monthNewAgents,
@@ -962,12 +1542,23 @@ class Index extends Base
             'shop_name' => $shopName,
             'shop_code' => $shopCode,
             'shop_url' => $shopUrl,
+            'shop_available' => $shopUrl !== '' ? 1 : 0,
+            'shop_unavailable_message' => $shopUnavailableMessage,
             'parent_agent_name' => $parentAgentInfo,
             'parent_contact_phone' => $parentContactPhone,
             'parent_service_qrcode' => $parentServiceQrcode,
 
             'shop_metric_sets' => $shopMetricSets,
             'shop_trend_datasets' => $shopTrendDatasets,
+            'team_dashboard_context' => [
+                'enabled' => $hasTeamDashboard ? 1 : 0,
+                'mode' => $teamDashboardMode,
+                'scope' => (string)($scopeProfile['scope'] ?? 'direct'),
+                'scope_text' => (string)($scopeProfile['scope_text'] ?? '直属下级'),
+                'is_employee' => !empty($employeeContext['is_employee']) ? 1 : 0,
+            ],
+            'team_trend_datasets' => $teamTrendDatasets,
+            'employee_trend_datasets' => $teamTrendDatasets,
             
             // 订单状态统计
             'order_status_stats' => [
@@ -1024,26 +1615,27 @@ class Index extends Base
             'workorder_plugin_enabled' => $workorderPluginEnabled ? 1 : 0,
             'marketing_plugin_enabled' => $marketingPluginEnabled ? 1 : 0,
             'employee_context' => $employeeContext,
-            'employee_team_stats' => $employeeTeamStats,
+            'team_stats' => $teamStats,
+            'employee_team_stats' => $teamStats,
         ];
 
-        if (!empty($employeeContext['is_employee'])) {
+        if ($hasTeamDashboard) {
             $dashboard['overview_stats'] = [
                 [
-                    'label' => '员工号',
-                    'value' => (string)($employeeContext['employee_code'] ?: '-')
+                    'label' => !empty($employeeContext['is_employee']) ? '员工号' : '团队权限',
+                    'value' => !empty($employeeContext['is_employee']) ? (string)($employeeContext['employee_code'] ?: '-') : '全部下级'
                 ],
                 [
                     'label' => '本月团队订单',
-                    'value' => number_format((int)($employeeTeamStats['month']['total_orders'] ?? 0))
+                    'value' => number_format((int)($teamStats['month']['total_orders'] ?? 0))
                 ],
                 [
                     'label' => '全年团队订单',
-                    'value' => number_format((int)($employeeTeamStats['year']['total_orders'] ?? 0))
+                    'value' => number_format((int)($teamStats['year']['total_orders'] ?? 0))
                 ],
                 [
                     'label' => '本月待结算',
-                    'value' => '¥' . number_format((float)($employeeTeamStats['month']['payable_amount'] ?? 0), 2)
+                    'value' => '¥' . number_format((float)($teamStats['month']['payable_amount'] ?? 0), 2)
                 ],
                 [
                     'label' => '当前余额',
@@ -1066,6 +1658,41 @@ class Index extends Base
         return number_format($number);
     }
 
+    private function buildAgentTopbarProfile(int $agentId, array $agentInfo): array
+    {
+        $distributionMode = strtolower(trim((string) SystemConfig::get('distribution_level_mode', 'legacy')));
+        $profile = Db::table('agents')
+            ->alias('a')
+            ->leftJoin('secret_price_levels spl', 'a.secret_price_level_id = spl.id')
+            ->leftJoin('invite_code ic', 'a.invite_code_id = ic.id')
+            ->leftJoin('distribution_level dl', 'a.distribution_level_id = dl.id')
+            ->field('a.parent_id, a.secret_price_level_id, spl.level_name as secret_price_level_name, spl.icon as secret_price_level_icon, ic.level_name as agent_level_name, dl.level_name as distribution_level_name')
+            ->where('a.id', $agentId)
+            ->find() ?: [];
+
+        if (($profile['secret_price_level_icon'] ?? '') === '' && !empty($profile['secret_price_level_id'])) {
+            $levelInfo = Db::table('secret_price_levels')->where('id', (int)$profile['secret_price_level_id'])->find() ?: [];
+            foreach (['icon', 'level_icon', 'image_url', 'image', 'logo'] as $field) {
+                if (!empty($levelInfo[$field])) {
+                    $profile['secret_price_level_icon'] = $levelInfo[$field];
+                    break;
+                }
+            }
+        }
+
+        $parentId = (int)($profile['parent_id'] ?? ($agentInfo['parent_id'] ?? 0));
+        $agentLevelText = $parentId === 0 ? '直属代理' : ((string)($profile['agent_level_name'] ?? '') ?: '普通代理');
+        if ($distributionMode === 'fixed') {
+            $agentLevelText = (string)($profile['distribution_level_name'] ?? '') ?: ($parentId === 0 ? '直属代理' : '普通代理');
+        }
+
+        return [
+            'agent_level_text' => $agentLevelText,
+            'secret_price_level_name' => (string)($profile['secret_price_level_name'] ?? ''),
+            'secret_price_level_icon' => (string)($profile['secret_price_level_icon'] ?? ''),
+        ];
+    }
+
     /**
      * 构建店铺趋势数据集
      */
@@ -1074,6 +1701,24 @@ class Index extends Base
         $datasets = [];
         foreach ([7, 30] as $rangeDays) {
             $datasets[$rangeDays . '_day'] = $this->buildAgentTrendDataset($agentId, $rangeDays, 'day');
+        }
+        return $datasets;
+    }
+
+    private function buildTeamTrendDatasets(int $agentId): array
+    {
+        $teamIds = (new EmployeeAgentService())->getDescendantAgentIds($agentId, true);
+        $monthStart = new \DateTimeImmutable(date('Y-m-01 00:00:00'));
+        $monthEnd = new \DateTimeImmutable(date('Y-m-t 23:59:59'));
+        $yearStart = new \DateTimeImmutable(date('Y-01-01 00:00:00'));
+        $yearEnd = new \DateTimeImmutable(date('Y-12-31 23:59:59'));
+        $datasets = [
+            'month' => $this->buildTeamTrendDatasetByRange($agentId, $teamIds, $monthStart, $monthEnd, 'day', '本月团队趋势'),
+            'year' => $this->buildTeamTrendDatasetByRange($agentId, $teamIds, $yearStart, $yearEnd, 'month', '全年团队趋势'),
+        ];
+
+        foreach ([7, 30] as $rangeDays) {
+            $datasets[$rangeDays . '_day'] = $this->buildTeamTrendDataset($agentId, $teamIds, $rangeDays, 'day');
         }
         return $datasets;
     }
@@ -1175,6 +1820,8 @@ class Index extends Base
         $start = new \DateTimeImmutable(date('Y-m-d 00:00:00', strtotime('-' . ($rangeDays - 1) . ' days')));
         $end = new \DateTimeImmutable(date('Y-m-d 23:59:59'));
         $buckets = $this->buildTrendBuckets($start, $end, $unit);
+        $shopInfo = Db::table('agent_shop')->where('agent_id', $agentId)->find();
+        $shopId = (int)($shopInfo['id'] ?? 0);
 
         $orders = Db::table('order')
             ->where('agent_id', (string)$agentId)
@@ -1206,13 +1853,32 @@ class Index extends Base
             }
         }
 
+        if ($shopId > 0) {
+            $visits = Db::table('agent_shop_visits')
+                ->where('shop_id', $shopId)
+                ->where('visit_date', '>=', $start->format('Y-m-d'))
+                ->where('visit_date', '<=', $end->format('Y-m-d'))
+                ->field('visit_date')
+                ->select()
+                ->toArray();
+
+            foreach ($visits as $visit) {
+                $timestamp = strtotime((string)($visit['visit_date'] ?? ''));
+                if ($timestamp > 0) {
+                    $this->appendTrendCount($buckets, $timestamp, 'visits');
+                }
+            }
+        }
+
         $labels = [];
         $orderCounts = [];
         $agentCounts = [];
+        $visitCounts = [];
         foreach ($buckets as $bucket) {
             $labels[] = $bucket['label'];
             $orderCounts[] = $bucket['orders'];
             $agentCounts[] = $bucket['agents'];
+            $visitCounts[] = $bucket['visits'];
         }
 
         return [
@@ -1221,7 +1887,87 @@ class Index extends Base
             'labels' => $labels,
             'orders' => $orderCounts,
             'agents' => $agentCounts,
+            'visits' => $visitCounts,
             'title' => $this->getTrendTitle($rangeDays, $unit)
+        ];
+    }
+
+    private function buildTeamTrendDataset(int $agentId, array $teamIds, int $rangeDays, string $unit): array
+    {
+        $start = new \DateTimeImmutable(date('Y-m-d 00:00:00', strtotime('-' . ($rangeDays - 1) . ' days')));
+        $end = new \DateTimeImmutable(date('Y-m-d 23:59:59'));
+        return $this->buildTeamTrendDatasetByRange($agentId, $teamIds, $start, $end, $unit, '近' . $rangeDays . '天团队趋势', $rangeDays);
+    }
+
+    private function buildTeamTrendDatasetByRange(
+        int $agentId,
+        array $teamIds,
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end,
+        string $unit,
+        string $title,
+        ?int $rangeDays = null
+    ): array {
+        $buckets = $this->buildTrendBuckets($start, $end, $unit);
+        $teamIds = array_values(array_unique(array_filter(array_map('intval', $teamIds), function ($id) {
+            return $id > 0;
+        })));
+
+        if (!empty($teamIds)) {
+            $orders = Db::table('order')
+                ->whereIn('agent_id', array_map('strval', $teamIds))
+                ->whereIn('order_status', [0, 1, 2, 3, 4, 5, 6, 7])
+                ->where('create_time', '>=', $start->format('Y-m-d H:i:s'))
+                ->where('create_time', '<=', $end->format('Y-m-d H:i:s'))
+                ->field('create_time')
+                ->select()
+                ->toArray();
+
+            foreach ($orders as $order) {
+                $timestamp = strtotime((string)($order['create_time'] ?? ''));
+                if ($timestamp > 0) {
+                    $this->appendTrendCount($buckets, $timestamp, 'orders');
+                }
+            }
+        }
+
+        $descendantIds = array_values(array_diff($teamIds, [$agentId]));
+        if (!empty($descendantIds)) {
+            $agents = Db::table('agents')
+                ->whereIn('id', $descendantIds)
+                ->where('create_time', '>=', $start->getTimestamp() * 1000)
+                ->where('create_time', '<=', $end->getTimestamp() * 1000)
+                ->field('create_time')
+                ->select()
+                ->toArray();
+
+            foreach ($agents as $agent) {
+                $timestamp = (int)floor(((int)($agent['create_time'] ?? 0)) / 1000);
+                if ($timestamp > 0) {
+                    $this->appendTrendCount($buckets, $timestamp, 'agents');
+                }
+            }
+        }
+
+        $labels = [];
+        $orderCounts = [];
+        $agentCounts = [];
+        $visitCounts = [];
+        foreach ($buckets as $bucket) {
+            $labels[] = $bucket['label'];
+            $orderCounts[] = $bucket['orders'];
+            $agentCounts[] = $bucket['agents'];
+            $visitCounts[] = 0;
+        }
+
+        return [
+            'range_days' => $rangeDays,
+            'unit' => $unit,
+            'labels' => $labels,
+            'orders' => $orderCounts,
+            'agents' => $agentCounts,
+            'visits' => $visitCounts,
+            'title' => $title,
         ];
     }
 
@@ -1247,7 +1993,8 @@ class Index extends Base
                     'end' => $bucketEnd->getTimestamp(),
                     'label' => $bucketStart->format('m/d') . '-' . $bucketEnd->format('m/d'),
                     'orders' => 0,
-                    'agents' => 0
+                    'agents' => 0,
+                    'visits' => 0
                 ];
                 $cursor = $bucketEnd->modify('+1 second');
             }
@@ -1267,7 +2014,8 @@ class Index extends Base
                     'end' => $bucketEnd->getTimestamp(),
                     'label' => $bucketStart->format('Y-m'),
                     'orders' => 0,
-                    'agents' => 0
+                    'agents' => 0,
+                    'visits' => 0
                 ];
                 $cursor = $cursor->modify('first day of next month')->setTime(0, 0, 0);
             }
@@ -1283,7 +2031,8 @@ class Index extends Base
                 'end' => $bucketEnd->getTimestamp(),
                 'label' => $bucketStart->format('m/d'),
                 'orders' => 0,
-                'agents' => 0
+                'agents' => 0,
+                'visits' => 0
             ];
             $cursor = $cursor->modify('+1 day');
         }
@@ -1311,5 +2060,33 @@ class Index extends Base
             $shopCode = bin2hex(random_bytes(4));
         }
         return $shopCode;
+    }
+
+    private function buildFrontendShopUrl(string $shopCode): string
+    {
+        try {
+            return (new ShopPublicLinkService())->buildShopUrl($shopCode);
+        } catch (\Throwable $e) {
+            return $this->getFrontendBaseUrl() . '/#/shop/' . rawurlencode($shopCode);
+        }
+    }
+
+    private function getFrontendBaseUrl(): string
+    {
+        $origin = trim((string)request()->header('Origin', ''));
+        if ($origin !== '' && preg_match('#^https?://#i', $origin)) {
+            return rtrim($origin, '/');
+        }
+
+        $referer = trim((string)request()->header('Referer', ''));
+        if ($referer !== '') {
+            $parts = parse_url($referer);
+            if (!empty($parts['scheme']) && !empty($parts['host'])) {
+                $port = !empty($parts['port']) ? ':' . $parts['port'] : '';
+                return $parts['scheme'] . '://' . $parts['host'] . $port;
+            }
+        }
+
+        return rtrim(request()->domain(), '/');
     }
 }

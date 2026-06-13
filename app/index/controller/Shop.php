@@ -14,11 +14,12 @@ use app\index\service\shop\OrderSupportService;
 use app\index\service\shop\OrderSubmitService;
 use app\index\service\shop\ProductListService;
 use app\index\service\shop\ProductPosterService;
+use app\index\service\shop\PublicPosterService;
 use app\index\service\shop\ProductPageService;
 use app\index\service\shop\VerifyCodeService;
-
-// 引入QRcode库
-require_once app()->getRootPath() . 'public/phpqrcode/qrlib.php';
+use app\common\service\AgreementProtocolService;
+use app\common\service\CommissionCalculationService;
+use app\common\service\ShopPublicLinkService;
 
 class Shop
 {
@@ -27,6 +28,66 @@ class Shop
         header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('Expires: 0');
+    }
+
+    private function useIndexViewPath(): void
+    {
+        View::config([
+            'view_path' => app()->getRootPath() . 'app/index/view' . DIRECTORY_SEPARATOR,
+        ]);
+    }
+
+    private function buildVueHashUrl(string $path, array $query = []): string
+    {
+        $query = array_filter($query, function ($value) {
+            return $value !== null && $value !== '';
+        });
+        $base = '/';
+        $scheme = request()->header('X-Forwarded-Proto') ?: request()->scheme();
+        $host = request()->header('X-Forwarded-Host') ?: request()->server('HTTP_HOST', request()->host());
+        if (preg_match('/:(9000|8000)$/', (string)$host)) {
+            $host = preg_replace('/:(9000|8000)$/', ':3006', (string)$host);
+            $base = $scheme . '://' . $host . '/';
+        }
+
+        $url = $base . '#' . $path;
+        if (!empty($query)) {
+            $url .= '?' . http_build_query($query);
+        }
+        return $url;
+    }
+
+    private function buildPublicShopUrl(string $shopCode, array $query = []): string
+    {
+        $query = array_filter($query, function ($value) {
+            return $value !== null && $value !== '';
+        });
+        $url = '/shop/' . rawurlencode($shopCode);
+        if (!empty($query)) {
+            $url .= '?' . http_build_query($query);
+        }
+        return $url;
+    }
+
+    private function isCleanShopPath(): bool
+    {
+        $segments = explode('/', trim(request()->pathinfo(), '/'));
+        return count($segments) >= 2 && $segments[0] === 'shop';
+    }
+
+    private function isLegacyShopPath(): bool
+    {
+        $segments = explode('/', trim(request()->pathinfo(), '/'));
+        $requestPath = (string)parse_url((string)request()->server('REQUEST_URI', ''), PHP_URL_PATH);
+        if (preg_match('#/index/shop(?:/|$)#', $requestPath)) {
+            return true;
+        }
+
+        return count($segments) >= 3
+            && (
+                ($segments[0] === 'index' && $segments[1] === 'shop')
+                || ($segments[0] === 'shop' && ($segments[1] ?? '') === 'index')
+            );
     }
 
     private function mapIndexTemplateToSet(string $indexTemplate): string
@@ -39,16 +100,55 @@ class Shop
         return $mapping[$indexTemplate] ?? 't1';
     }
 
+    private function normalizeShopTemplate(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $map = [
+            '1' => 'template1',
+            '2' => 'template2',
+            '3' => 'template3',
+            'template1' => 'template1',
+            'template2' => 'template2',
+            'template3' => 'template3',
+            'index1' => 'template1',
+            'index2' => 'template2',
+            'index3' => 'template3',
+            'product1' => 'template1',
+            'product2' => 'template2',
+            'product3' => 'template3',
+            'product-v1' => 'template1',
+            'product-v2' => 'template2',
+            'product-v3' => 'template3',
+        ];
+        return $map[$value] ?? '';
+    }
+
+    private function shopTemplateNumber(string $shopTemplate): string
+    {
+        $shopTemplate = $this->normalizeShopTemplate($shopTemplate) ?: 'template1';
+        return substr($shopTemplate, -1) ?: '1';
+    }
+
+    private function mapShopTemplateToIndex(string $shopTemplate): string
+    {
+        return 'index' . $this->shopTemplateNumber($shopTemplate);
+    }
+
+    private function mapShopTemplateToProduct(string $shopTemplate): string
+    {
+        return 'product' . $this->shopTemplateNumber($shopTemplate);
+    }
+
     private function resolveTemplateSetForCommonPages(): string
     {
         // 预览态支持通过 template/tpl 指定套系
-        $requested = strtolower(trim((string)request()->get('__tpl', request()->get('template', request()->get('tpl', '')))));
-        if (in_array($requested, ['index1', 'index2', 'index3'], true)) {
-            return $this->mapIndexTemplateToSet($requested);
+        $requested = $this->normalizeShopTemplate((string)request()->get('__tpl', request()->get('template', request()->get('tpl', ''))));
+        if ($requested !== '') {
+            return $this->mapIndexTemplateToSet($this->mapShopTemplateToIndex($requested));
         }
 
         // 正常态根据当前店铺首页模板配置决定套系
-        return $this->mapIndexTemplateToSet($this->resolveConfiguredIndexTemplate());
+        return $this->mapIndexTemplateToSet($this->mapShopTemplateToIndex($this->resolveConfiguredShopTemplate()));
     }
 
     private function getCommonPageView(string $pageName): string
@@ -118,90 +218,55 @@ class Shop
 
     private function resolveConfiguredIndexTemplate(): string
     {
+        return $this->mapShopTemplateToIndex($this->resolveConfiguredShopTemplate());
+    }
+
+    private function resolveConfiguredShopTemplate(): string
+    {
         try {
             $version = $this->getTemplateConfigCacheVersion();
-            $cacheKey = 'shop_template:index:' . $version;
+            $cacheKey = 'shop_template:unified:' . $version;
             $value = Cache::get($cacheKey);
             if (!is_string($value) || $value === '') {
                 $value = Db::name('config_h5')
-                    ->where('config_key', 'shop_index_template')
+                    ->where('config_key', 'shop_template')
                     ->where('status', 1)
                     ->order('id', 'desc')
                     ->value('config_value');
                 Cache::set($cacheKey, (string)$value, 60);
             }
 
-            $value = strtolower(trim((string)$value));
-            if (in_array($value, ['index1', 'index2', 'index3'], true)) {
+            $value = $this->normalizeShopTemplate((string)$value);
+            if ($value !== '') {
                 return $value;
             }
 
             // 兼容旧键
-            $legacyKey = 'shop_template:index_legacy:' . $version;
+            $legacyKey = 'shop_template:unified_legacy:' . $version;
             $legacy = Cache::get($legacyKey);
-            if (!is_string($legacy) || $legacy === '') {
+            if (!is_array($legacy)) {
                 $legacy = Db::name('config_h5')
-                    ->where('config_key', 'product_template')
+                    ->whereIn('config_key', ['shop_index_template', 'shop_product_template', 'product_template'])
                     ->where('status', 1)
-                    ->order('id', 'desc')
-                    ->value('config_value');
-                Cache::set($legacyKey, (string)$legacy, 60);
+                    ->column('config_value', 'config_key');
+                Cache::set($legacyKey, $legacy, 60);
             }
-            $legacy = strtolower(trim((string)$legacy));
-            if ($legacy === 'product-v2') {
-                return 'index2';
-            }
-            if ($legacy === 'product-v3') {
-                return 'index3';
+
+            foreach (['shop_index_template', 'shop_product_template', 'product_template'] as $key) {
+                $mapped = $this->normalizeShopTemplate((string)($legacy[$key] ?? ''));
+                if ($mapped !== '') {
+                    return $mapped;
+                }
             }
         } catch (\Throwable $e) {
         }
 
-        return 'index1';
+        return 'template1';
     }
 
     private function resolveConfiguredProductTemplate(): string
     {
-        try {
-            $version = $this->getTemplateConfigCacheVersion();
-            $cacheKey = 'shop_template:product:' . $version;
-            $value = Cache::get($cacheKey);
-            if (!is_string($value) || $value === '') {
-                $value = Db::name('config_h5')
-                    ->where('config_key', 'shop_product_template')
-                    ->where('status', 1)
-                    ->order('id', 'desc')
-                    ->value('config_value');
-                Cache::set($cacheKey, (string)$value, 60);
-            }
-
-            $value = strtolower(trim((string)$value));
-            if (in_array($value, ['product1', 'product2', 'product3'], true)) {
-                return $value;
-            }
-
-            // 兼容旧键
-            $legacyKey = 'shop_template:product_legacy:' . $version;
-            $legacy = Cache::get($legacyKey);
-            if (!is_string($legacy) || $legacy === '') {
-                $legacy = Db::name('config_h5')
-                    ->where('config_key', 'product_template')
-                    ->where('status', 1)
-                    ->order('id', 'desc')
-                    ->value('config_value');
-                Cache::set($legacyKey, (string)$legacy, 60);
-            }
-            $legacy = strtolower(trim((string)$legacy));
-            if ($legacy === 'product-v2') {
-                return 'product2';
-            }
-            if ($legacy === 'product-v3') {
-                return 'product3';
-            }
-        } catch (\Throwable $e) {
-        }
-
-        return 'product1';
+        return $this->mapShopTemplateToProduct($this->resolveConfiguredShopTemplate());
     }
 
     private function getTemplateConfigCacheVersion(): int
@@ -219,25 +284,55 @@ class Shop
     public function index($shop_code = '')
     {
         $this->applyPageNoCacheHeaders();
+        $this->useIndexViewPath();
 
         // 显式读取 GET 参数，避免参数名在某些场景被框架解析链覆盖
         $template = request()->get('__tpl', request()->get('template', request()->get('tpl', input('param.template', input('template', 'default')))));
         if (empty($shop_code)) {
+            $shop_code = input('shop_code', '');
+        }
+        if (empty($shop_code)) {
             $pathInfo = request()->pathinfo();
-            $segments = explode('/', $pathInfo);
-            if (count($segments) >= 3 && $segments[0] == 'index' && $segments[1] == 'shop') {
-                $shop_code = $segments[2];
+            $segments = explode('/', trim($pathInfo, '/'));
+            $shopCodeIndex = array_search('shop_code', $segments, true);
+            if ($shopCodeIndex !== false && !empty($segments[$shopCodeIndex + 1])) {
+                $shop_code = $segments[$shopCodeIndex + 1];
+            } elseif (count($segments) >= 3 && $segments[0] == 'index' && $segments[1] == 'shop') {
+                if (($segments[2] ?? '') !== 'index') {
+                    $shop_code = $segments[2];
+                }
+            }
+            if (empty($shop_code) && count($segments) >= 2 && $segments[0] === 'shop') {
+                $shop_code = $segments[1];
             }
         }
 
         if (empty($shop_code)) {
             return $this->error('店铺不存在');
         }
+        if ($this->isLegacyShopPath() && !$this->isPreviewRequest() && (int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildPublicShopUrl((string)$shop_code, [
+                'template' => request()->get('template', request()->get('tpl', request()->get('__tpl', '')))
+            ]));
+        }
+        if (!$this->isPreviewRequest() && (int)input('_legacy', 0) !== 1) {
+            if ($this->isCleanShopPath()) {
+                // 短链接直接渲染店铺，保持浏览器地址为 /shop/{shop_code}
+            } else {
+                try {
+                    return redirect((new ShopPublicLinkService())->buildShopUrl((string)$shop_code));
+                } catch (\Throwable $e) {
+                    return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shop_code), [
+                        'template' => request()->get('template', request()->get('tpl', request()->get('__tpl', '')))
+                    ]));
+                }
+            }
+        }
 
         // 对外访问统一使用干净链接，不暴露 template/tpl 后缀参数
         if ($this->shouldStripTemplateParams()) {
-            $remainQuery = $this->buildRemainQuery(['template', 'tpl', '_preview', '_t']);
-            $url = '/index/shop/index/shop_code/' . $shop_code;
+            $remainQuery = $this->buildRemainQuery(['__tpl', 'template', 'tpl', '_preview', '_t']);
+            $url = $this->buildPublicShopUrl((string)$shop_code);
             if ($remainQuery !== '') {
                 $url .= '?' . $remainQuery;
             }
@@ -254,8 +349,9 @@ class Shop
             View::assign($viewData);
             View::assign('base_url', request()->domain());
             // URL 显式指定模板时，优先强制渲染指定模板（避免配置/缓存干扰）
-            $requestedTemplate = strtolower(trim((string)$template));
-            if ($this->isPreviewRequest() && in_array($requestedTemplate, ['index1', 'index2', 'index3'], true)) {
+            $requestedShopTemplate = $this->normalizeShopTemplate((string)$template);
+            if ($this->isPreviewRequest() && $requestedShopTemplate !== '') {
+                $requestedTemplate = $this->mapShopTemplateToIndex($requestedShopTemplate);
                 $view = $this->getIndexTemplateView($requestedTemplate);
                 if ($this->isPreviewRequest()) {
                     header('X-Shop-Template-Requested: ' . $requestedTemplate);
@@ -290,6 +386,150 @@ class Shop
     }
 
     /**
+     * Vue 店铺首页数据
+     */
+    public function vueIndex()
+    {
+        $this->applyPageNoCacheHeaders();
+
+        $shopCode = input('shop_code', '');
+        if (empty($shopCode)) {
+            return json(['code' => 0, 'msg' => '店铺不存在', 'data' => null]);
+        }
+
+        try {
+            $productListService = new ProductListService();
+            $viewData = $productListService->getShopIndexViewData($shopCode);
+            $shop = $viewData['shop'] ?? [];
+            if (!empty($shop)) {
+                $shop['online_service_url'] = $this->getOnlineServiceUrl();
+                $this->recordVisit($shop, 'shop');
+            }
+
+            $requestedTemplate = $this->normalizeShopTemplate((string)request()->get('__tpl', request()->get('template', request()->get('tpl', ''))));
+            $indexTemplate = $requestedTemplate !== ''
+                ? $this->mapShopTemplateToIndex($requestedTemplate)
+                : $this->resolveConfiguredIndexTemplate();
+            $productTemplate = $this->resolveConfiguredProductTemplate();
+            $publicLinkService = new ShopPublicLinkService();
+            $publicLinks = $publicLinkService->publicLinks((string)$shopCode);
+
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'shop' => $shop,
+                    'products' => $viewData['products'] ?? [],
+                    'totalProductCount' => (int)($viewData['totalProductCount'] ?? 0),
+                    'productScopeCounts' => $viewData['productScopeCounts'] ?? [],
+                    'productCategories' => $viewData['productCategories'] ?? [],
+                    'defaultProductScope' => $viewData['defaultProductScope'] ?? ['product_category' => 0, 'card_type' => 'free'],
+                    'bannerImages' => $viewData['bannerImages'] ?? [],
+                    'bannerLinks' => $viewData['bannerLinks'] ?? [],
+                    'baseUrl' => request()->domain(),
+                    'publicShopUrl' => $publicLinks['shop_url'] ?? '',
+                    'publicShopToken' => $publicLinks['shop_token'] ?? '',
+                    'shopTemplate' => $this->normalizeShopTemplate($requestedTemplate) ?: $this->resolveConfiguredShopTemplate(),
+                    'indexTemplate' => $indexTemplate,
+                    'productTemplate' => $productTemplate,
+                    'availableShopTemplates' => ['template1', 'template2', 'template3'],
+                    'availableIndexTemplates' => ['index1', 'index2', 'index3'],
+                    'availableProductTemplates' => ['product1', 'product2', 'product3']
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Vue店铺首页数据加载失败', ['shop_code' => $shopCode, 'error' => $e->getMessage()]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
+        }
+    }
+
+    /**
+     * Vue 商品详情页数据
+     */
+    public function vueProduct()
+    {
+        $this->applyPageNoCacheHeaders();
+
+        $shopCode = input('shop_code', '');
+        $productId = input('product_id', 0);
+        $productToken = trim((string)input('product_token', ''));
+        if (empty($shopCode) || empty($productId)) {
+            return json(['code' => 0, 'msg' => '参数错误', 'data' => null]);
+        }
+
+        try {
+            $productPageService = new ProductPageService();
+            $publicLinkService = new ShopPublicLinkService();
+            $shop = $productPageService->getActiveShopByCode($shopCode);
+            if (!$shop) {
+                return json(['code' => 0, 'msg' => '店铺不存在', 'data' => null]);
+            }
+
+            $product = $productPageService->getOnlineProductById($productId);
+            if (!$product) {
+                return json(['code' => 0, 'msg' => '产品不存在或已下架', 'data' => null]);
+            }
+            if (!$this->isProductVisibleToAgent($product, (int)($shop['agent_id'] ?? 0))) {
+                return json(['code' => 0, 'msg' => '无权访问该产品', 'data' => null]);
+            }
+            $commissionVisibility = (new CommissionCalculationService())->calculateProductVisibility($product, (int)($shop['agent_id'] ?? 0));
+            if (empty($commissionVisibility['can_agent_show'])) {
+                return json(['code' => 0, 'msg' => '无权访问该产品', 'data' => null]);
+            }
+            $isTokenProductEntry = $this->isMatchingProductToken($publicLinkService, $productToken, (string)$shopCode, (int)$productId);
+            $isShopProductBlocked = $this->isShopProductBlocked((int)($shop['agent_id'] ?? 0), (int)$productId);
+            if ($this->isProductBlockedByAncestor((int)($shop['agent_id'] ?? 0), (int)$productId)) {
+                return json(['code' => 0, 'msg' => '无权访问该产品', 'data' => null]);
+            }
+            if ($isShopProductBlocked && !$isTokenProductEntry) {
+                return json(['code' => 0, 'msg' => '商品暂不可访问', 'data' => null]);
+            }
+
+            $this->recordVisit($shop, 'product', $productId);
+            $viewData = $productPageService->buildViewData($shop, $product);
+
+            $requestedTemplate = $this->normalizeShopTemplate((string)request()->get('__tpl', request()->get('template', request()->get('tpl', ''))));
+            $productTemplate = $requestedTemplate !== ''
+                ? $this->mapShopTemplateToProduct($requestedTemplate)
+                : $this->resolveConfiguredProductTemplate();
+            $publicLinks = $publicLinkService->publicLinks((string)$shopCode, (int)$productId);
+
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'shop' => $viewData['shop'] ?? $shop,
+                    'product' => $viewData['product'] ?? $product,
+                    'detailImages' => $viewData['detailImages'] ?? [],
+                    'shopOrderVerify' => $viewData['shopOrderVerify'] ?? 'none',
+                    'shopOrderSmartRecognitionEnabled' => $viewData['shopOrderSmartRecognitionEnabled'] ?? true,
+                    'orderSecurityCheckEnabled' => $viewData['orderSecurityCheckEnabled'] ?? true,
+                    'apiTypeCode' => $viewData['apiTypeCode'] ?? 0,
+                    'shopPaymentMethods' => $viewData['shopPaymentMethods'] ?? [],
+                    'orderProtocols' => AgreementProtocolService::formatPublicList(
+                        AgreementProtocolService::orderProtocolsForProduct((int)$productId)
+                    ),
+                    'baseUrl' => request()->domain(),
+                    'publicShopUrl' => $publicLinks['shop_url'] ?? '',
+                    'publicShopToken' => $publicLinks['shop_token'] ?? '',
+                    'publicProductUrl' => $publicLinks['product_url'] ?? '',
+                    'publicProductToken' => $publicLinks['product_token'] ?? '',
+                    'isShopProductBlocked' => $isShopProductBlocked ? 1 : 0,
+                    'isTokenProductEntry' => $isTokenProductEntry ? 1 : 0,
+                    'showHomeEntry' => $isShopProductBlocked && $isTokenProductEntry ? 0 : 1,
+                    'shopTemplate' => $requestedTemplate ?: $this->resolveConfiguredShopTemplate(),
+                    'productTemplate' => $productTemplate,
+                    'availableShopTemplates' => ['template1', 'template2', 'template3'],
+                    'availableProductTemplates' => ['product1', 'product2', 'product3']
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Vue商品详情数据加载失败', ['shop_code' => $shopCode, 'product_id' => $productId, 'error' => $e->getMessage()]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
+        }
+    }
+
+    /**
      * 产品详情页
      * 访问方式：/index/shop/product/shop_code/店铺代码/product_id/产品ID
      */
@@ -306,10 +546,24 @@ class Shop
         if (empty($shop_code) || empty($product_id)) {
             return $this->error('参数错误');
         }
+        if (!$this->isPreviewRequest() && (int)input('_legacy', 0) !== 1) {
+            $product = $productPageService->getOnlineProductById($product_id);
+            if (!$product) {
+                return redirect($this->buildVueHashUrl('/product/' . (int)$product_id));
+            }
+            try {
+                return redirect((new ShopPublicLinkService())->buildProductUrl((string)$shop_code, (int)$product_id));
+            } catch (\Throwable $e) {
+                return redirect($this->buildVueHashUrl(
+                    '/shop/' . rawurlencode((string)$shop_code) . '/product/' . (int)$product_id,
+                    ['template' => request()->get('template', request()->get('tpl', request()->get('__tpl', '')))]
+                ));
+            }
+        }
 
         // 对外访问统一使用干净链接，不暴露 template/tpl 后缀参数
         if ($this->shouldStripTemplateParams()) {
-            $remainQuery = $this->buildRemainQuery(['template', 'tpl', '_preview', '_t', 'shop_code', 'product_id']);
+            $remainQuery = $this->buildRemainQuery(['__tpl', 'template', 'tpl', '_preview', '_t', 'shop_code', 'product_id']);
             $url = '/index/shop/product/shop_code/' . $shop_code . '/product_id/' . $product_id;
             if ($remainQuery !== '') {
                 $url .= '?' . $remainQuery;
@@ -329,6 +583,9 @@ class Shop
             // 产品不存在或已下架：跳转到公开资料页
             return redirect('/index/product/detail/id/' . (int)$product_id);
         }
+        if (!$this->isProductVisibleToAgent($product, (int)($shop['agent_id'] ?? 0))) {
+            return $this->error('无权访问该产品');
+        }
 
         // 记录商品页面访问
         $this->recordVisit($shop, 'product', $product_id);
@@ -336,17 +593,18 @@ class Shop
         View::assign($productPageService->buildViewData($shop, $product));
 
         // URL 显式指定模板时，优先强制渲染指定模板（避免配置/缓存干扰）
-        $requestedTemplate = strtolower(trim((string)$template));
-        if ($this->isPreviewRequest() && in_array($requestedTemplate, ['product1', 'product2', 'product3'], true)) {
-            $view = $this->getProductTemplateView($requestedTemplate);
+        $requestedTemplate = $this->normalizeShopTemplate((string)$template);
+        if ($this->isPreviewRequest() && $requestedTemplate !== '') {
+            $productPreviewTemplate = $this->mapShopTemplateToProduct($requestedTemplate);
+            $view = $this->getProductTemplateView($productPreviewTemplate);
             if ($this->isPreviewRequest()) {
-                header('X-Shop-Template-Requested: ' . $requestedTemplate);
+                header('X-Shop-Template-Requested: ' . $productPreviewTemplate);
                 header('X-Shop-Template-Resolved: ' . $view);
             }
             Log::info('[ShopTemplateDebug] product preview', [
                 'shop_code' => $shop_code,
                 'product_id' => $product_id,
-                'requested' => $requestedTemplate,
+                'requested' => $productPreviewTemplate,
                 'resolved_view' => $view,
                 'query' => request()->get()
             ]);
@@ -376,6 +634,9 @@ class Shop
         if (empty($shopCode)) {
             $this->error('店铺不存在');
         }
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shopCode) . '/orders'));
+        }
 
         $shop = Db::table('agent_shop')->where('shop_code', $shopCode)->find();
         if (!$shop) {
@@ -388,7 +649,42 @@ class Shop
         View::assign('shop', $shop);
         View::assign('express_enabled', $expressEnabled);
         View::assign('base_url', request()->domain());
+        if (strtolower(trim((string)request()->get('__tpl', ''))) === 'index3') {
+            return View::fetch('shop/template/t3/order_query');
+        }
         return View::fetch($this->getCommonPageView('order_query'));
+    }
+
+    // 订单查询结果页面
+    public function order_result()
+    {
+        $shopCode = input('shop_code', '');
+        if (empty($shopCode)) {
+            $this->error('店铺不存在');
+        }
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shopCode) . '/orders', [
+                'phone' => input('phone', ''),
+                'idcard' => input('idcard', '')
+            ]));
+        }
+
+        $shop = Db::table('agent_shop')->where('shop_code', $shopCode)->find();
+        if (!$shop) {
+            $this->error('店铺不存在');
+        }
+
+        $expressEnabled = \app\common\helper\SystemConfig::get('express_enabled', '0');
+
+        View::assign('shop', $shop);
+        View::assign('express_enabled', $expressEnabled);
+        View::assign('base_url', request()->domain());
+        View::assign('query_phone', input('phone', ''));
+        View::assign('query_idcard', input('idcard', ''));
+        if (strtolower(trim((string)request()->get('__tpl', ''))) === 'index3') {
+            return View::fetch('shop/template/t3/order_result');
+        }
+        return View::fetch($this->getCommonPageView('order_result'));
     }
 
     // 客服页面
@@ -397,6 +693,9 @@ class Shop
         $shopCode = input('shop_code', '');
         if (empty($shopCode)) {
             $this->error('店铺不存在');
+        }
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shopCode) . '/service'));
         }
 
         $shop = Db::table('agent_shop')->where('shop_code', $shopCode)->find();
@@ -409,6 +708,27 @@ class Shop
         return View::fetch($this->getCommonPageView('service'));
     }
 
+    // 一键通查页面
+    public function one_card_query()
+    {
+        $shopCode = input('shop_code', '');
+        if (empty($shopCode)) {
+            $this->error('店铺不存在');
+        }
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shopCode) . '/one-card-query'));
+        }
+
+        $shop = Db::table('agent_shop')->where('shop_code', $shopCode)->find();
+        if (!$shop) {
+            $this->error('店铺不存在');
+        }
+
+        View::assign('shop', $shop);
+        View::assign('base_url', request()->domain());
+        return View::fetch('shop/one_card_query');
+    }
+
     /**
      * 宽带页面
      */
@@ -417,6 +737,9 @@ class Shop
         $shopCode = input('shop_code', '');
         if (empty($shopCode)) {
             $this->error('店铺不存在');
+        }
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shopCode) . '/broadband'));
         }
 
         $shop = Db::table('agent_shop')->where('shop_code', $shopCode)->find();
@@ -449,6 +772,13 @@ class Shop
         if (empty($shop_code) || empty($product_id)) {
             return $this->error('参数错误');
         }
+        if ((int)input('_legacy', 0) !== 1) {
+            try {
+                return redirect((new ShopPublicLinkService())->buildProductUrl((string)$shop_code, (int)$product_id));
+            } catch (\Throwable $e) {
+                return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shop_code) . '/product/' . (int)$product_id));
+            }
+        }
 
         // 获取店铺和产品信息
         $shop = Db::table('agent_shop')->where('shop_code', $shop_code)->where('status', 1)->find();
@@ -456,6 +786,9 @@ class Shop
 
         if (!$shop || !$product) {
             return $this->error('店铺或产品不存在');
+        }
+        if (!$this->isProductVisibleToAgent($product, (int)($shop['agent_id'] ?? 0))) {
+            return $this->error('无权访问该产品');
         }
 
         // 记录下单页面访问
@@ -653,6 +986,12 @@ class Shop
     {
         $orderId = input('order_id', '');
         $orderNo = input('order_no', '');
+        if ((int)input('_legacy', 0) !== 1) {
+            return redirect($this->buildVueHashUrl('/shop/upload/photos', [
+                'order_id' => $orderId,
+                'order_no' => $orderNo
+            ]));
+        }
 
         try {
             $photoUploadService = new PhotoUploadService();
@@ -660,6 +999,26 @@ class Shop
             return view('upload/photos');
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
+        }
+    }
+
+    /**
+     * Vue上传照片页初始化数据
+     */
+    public function vueUploadPhotos()
+    {
+        $orderId = input('order_id', '');
+        $orderNo = input('order_no', '');
+
+        try {
+            $photoUploadService = new PhotoUploadService();
+            return json([
+                'code' => 1,
+                'msg' => 'success',
+                'data' => $photoUploadService->getUploadPageData($orderId, $orderNo)
+            ]);
+        } catch (\Exception $e) {
+            return json(['code' => 0, 'msg' => $e->getMessage()]);
         }
     }
 
@@ -837,6 +1196,12 @@ class Shop
     {
         $productId = input('product_id', 0);
         if (empty($productId)) {
+            $productId = input('post.product_id', 0);
+        }
+        if (empty($productId) && isset($_POST['product_id'])) {
+            $productId = $_POST['product_id'];
+        }
+        if (empty($productId)) {
             return json(['code' => 0, 'msg' => '参数错误']);
         }
 
@@ -925,47 +1290,124 @@ class Shop
      */
     public function getData()
     {
-        // 设置响应头
-        header('Content-Type: application/json; charset=utf-8');
-
         try {
             // 读取地区数据文件
             $dataFile = __DIR__ . '/../controller/data.json';
 
             if (!file_exists($dataFile)) {
-                echo json_encode([
+                return json([
                     'code' => 0,
                     'msg' => '地区数据文件不存在',
                     'data' => []
-                ], JSON_UNESCAPED_UNICODE);
-                return;
+                ]);
             }
 
             $jsonData = file_get_contents($dataFile);
             $data = json_decode($jsonData, true);
 
             if ($data === null) {
-                echo json_encode([
+                return json([
                     'code' => 0,
                     'msg' => '地区数据格式错误',
                     'data' => []
-                ], JSON_UNESCAPED_UNICODE);
-                return;
+                ]);
             }
 
-            echo json_encode([
+            return json([
                 'code' => 1,
                 'msg' => '获取成功',
                 'data' => $data
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
 
         } catch (\Exception $e) {
-            echo json_encode([
+            return json([
                 'code' => 0,
                 'msg' => '获取地区数据失败：' . $e->getMessage(),
                 'data' => []
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
         }
+    }
+
+    public function resolveShopToken()
+    {
+        $token = (string)input('token', '');
+        try {
+            $linkService = new ShopPublicLinkService();
+            $shop = $linkService->resolveShopToken($token);
+            if (!$shop) {
+                return json(['code' => 0, 'msg' => '店铺链接不存在', 'data' => null]);
+            }
+            $links = $linkService->publicLinks((string)$shop['shop_code']);
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'shop_code' => (string)$shop['shop_code'],
+                    'shop_url' => $links['shop_url'] ?? '',
+                    'shop_token' => $links['shop_token'] ?? '',
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('公开店铺链接解析失败', ['token' => $token, 'error' => $e->getMessage()]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
+        }
+    }
+
+    public function resolveProductToken()
+    {
+        $token = (string)input('token', '');
+        try {
+            $linkService = new ShopPublicLinkService();
+            $resolved = $linkService->resolveProductToken($token);
+            if (!$resolved) {
+                return json(['code' => 0, 'msg' => '商品链接不存在', 'data' => null]);
+            }
+            $shopCode = (string)$resolved['shop_code'];
+            $productId = (int)$resolved['product_id'];
+            $links = $linkService->publicLinks($shopCode, $productId);
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'shop_code' => $shopCode,
+                    'product_id' => $productId,
+                    'shop_url' => $links['shop_url'] ?? '',
+                    'shop_token' => $links['shop_token'] ?? '',
+                    'product_url' => $links['product_url'] ?? '',
+                    'product_token' => $links['product_token'] ?? '',
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('公开商品链接解析失败', ['token' => $token, 'error' => $e->getMessage()]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
+        }
+    }
+
+    public function getPublicLinks()
+    {
+        $shopCode = (string)input('shop_code', '');
+        $productId = (int)input('product_id', 0);
+        try {
+            if ($shopCode === '') {
+                return json(['code' => 0, 'msg' => '店铺不存在', 'data' => null]);
+            }
+            $links = (new ShopPublicLinkService())->publicLinks($shopCode, $productId > 0 ? $productId : null);
+            return json(['code' => 1, 'msg' => '获取成功', 'data' => $links]);
+        } catch (\Throwable $e) {
+            Log::error('公开链接生成失败', ['shop_code' => $shopCode, 'product_id' => $productId, 'error' => $e->getMessage()]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
+        }
+    }
+
+    public function onlineServiceConfig()
+    {
+        return json([
+            'code' => 1,
+            'msg' => '获取成功',
+            'data' => [
+                'online_service_url' => $this->getOnlineServiceUrl(),
+            ],
+        ]);
     }
 
     /**
@@ -979,11 +1421,13 @@ class Shop
         $operator = input('operator', ''); // 运营商筛选
         $keyword = input('keyword', ''); // 搜索关键词
         $cardType = input('card_type', ''); // 卡片类型筛选：free=免费卡, paid=付费卡
+        $productCategory = input('product_category', ''); // 商品分类：0=流量卡, 1=宽带
+        $region = input('region', ''); // 地区筛选：按可发区/禁发区过滤
 
-        Log::info('loadProducts请求', compact('shop_code', 'page', 'limit', 'operator', 'keyword', 'cardType'));
+        Log::info('loadProducts请求', compact('shop_code', 'page', 'limit', 'operator', 'keyword', 'cardType', 'productCategory', 'region'));
 
         $productListService = new ProductListService();
-        return json($productListService->loadProducts($shop_code, $page, $limit, $operator, $keyword, $cardType));
+        return json($productListService->loadProducts($shop_code, $page, $limit, $operator, $keyword, $cardType, $productCategory, $region));
     }
 
     /**
@@ -994,8 +1438,24 @@ class Shop
         $shop_code = input('shop_code', '');
         $product_id = input('product_id', 0);
         $template_id = input('template_id', 1);
+        $share_url = input('share_url', '');
         $posterService = new ProductPosterService();
-        return json($posterService->generate($shop_code, $product_id, $template_id));
+        return json($posterService->generate($shop_code, $product_id, $template_id, $share_url));
+    }
+
+    /**
+     * 统一生成公开页二维码海报
+     */
+    public function generatePoster()
+    {
+        $posterService = new PublicPosterService();
+        return json($posterService->generate([
+            'scene' => input('scene', 'product'),
+            'shop_code' => input('shop_code', ''),
+            'product_id' => input('product_id', 0),
+            'template_id' => input('template_id', 1),
+            'share_url' => input('share_url', '')
+        ]));
     }
 
     /**
@@ -1028,7 +1488,7 @@ class Shop
     }
 
     /**
-     * 获取重提订单数据（安全接口，不直接暴露admin/agent路径）
+     * 获取换卡下单数据（安全接口，不直接暴露admin/agent路径）
      * 访问方式：POST /index/shop/getResubmitOrderData
      * 自动从URL路径中提取shop_code，并根据订单信息判断来源
      */
@@ -1054,12 +1514,64 @@ class Shop
      */
     public function collection($shop_code = '', $collection_id = 0)
     {
+        if (empty($shop_code)) {
+            $shop_code = input('shop_code', '');
+        }
+        if (empty($collection_id)) {
+            $collection_id = input('collection_id', 0);
+        }
+        if ((int)input('_legacy', 0) !== 1 && !empty($shop_code) && !empty($collection_id)) {
+            return redirect($this->buildVueHashUrl('/shop/' . rawurlencode((string)$shop_code) . '/collection/' . (int)$collection_id));
+        }
+
         try {
             $productListService = new ProductListService();
             View::assign($productListService->getCollectionViewData($shop_code, $collection_id));
             return View::fetch($this->getCommonPageView('collection'));
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
+        }
+    }
+
+    /**
+     * Vue 合集页数据
+     */
+    public function vueCollection()
+    {
+        $this->applyPageNoCacheHeaders();
+
+        $shopCode = input('shop_code', '');
+        $collectionId = input('collection_id', 0);
+        if (empty($shopCode) || empty($collectionId)) {
+            return json(['code' => 0, 'msg' => '参数错误', 'data' => null]);
+        }
+
+        try {
+            $productListService = new ProductListService();
+            $viewData = $productListService->getCollectionViewData($shopCode, $collectionId);
+            $shop = $viewData['shop'] ?? [];
+            if (!empty($shop)) {
+                $this->recordVisit($shop, 'shop');
+            }
+
+            return json([
+                'code' => 1,
+                'msg' => '获取成功',
+                'data' => [
+                    'shop' => $shop,
+                    'collection' => $viewData['collection'] ?? [],
+                    'products' => $viewData['products'] ?? [],
+                    'shopCode' => $shopCode,
+                    'baseUrl' => request()->domain()
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Vue合集页数据加载失败', [
+                'shop_code' => $shopCode,
+                'collection_id' => $collectionId,
+                'error' => $e->getMessage()
+            ]);
+            return json(['code' => 0, 'msg' => $e->getMessage(), 'data' => null]);
         }
     }
 
@@ -1100,5 +1612,144 @@ class Shop
         } catch (\Exception $e) {
             return json(['code' => 0, 'msg' => '解析失败']);
         }
+    }
+
+    private function isProductVisibleToAgent(array $product, int $agentId): bool
+    {
+        $visibleGroupIds = trim((string)($product['visible_group_ids'] ?? ''));
+        if ($visibleGroupIds === '') {
+            return true;
+        }
+
+        if ($agentId <= 0) {
+            return false;
+        }
+
+        $agentGroupId = 0;
+        try {
+            if (!empty(Db::query("SHOW COLUMNS FROM `agents` LIKE 'group_id'"))) {
+                $agentGroupId = (int)(Db::table('agents')->where('id', $agentId)->value('group_id') ?? 0);
+            }
+        } catch (\Throwable $e) {
+            $agentGroupId = 0;
+        }
+
+        if ($agentGroupId <= 0) {
+            return false;
+        }
+
+        $ids = array_filter(array_map('intval', explode(',', $visibleGroupIds)));
+        return in_array($agentGroupId, $ids, true);
+    }
+
+    private function isMatchingProductToken(ShopPublicLinkService $linkService, string $token, string $shopCode, int $productId): bool
+    {
+        if ($token === '' || $shopCode === '' || $productId <= 0) {
+            return false;
+        }
+
+        try {
+            $resolved = $linkService->resolveProductToken($token);
+            if (!$resolved) {
+                return false;
+            }
+
+            return (string)($resolved['shop_code'] ?? '') === $shopCode
+                && (int)($resolved['product_id'] ?? 0) === $productId;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function agentProductBlockTableExists(): bool
+    {
+        try {
+            return !empty(Db::query("SHOW TABLES LIKE 'agent_product_block'"));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function isShopProductBlocked(int $agentId, int $productId): bool
+    {
+        if ($agentId <= 0 || $productId <= 0 || !$this->agentProductBlockTableExists()) {
+            return false;
+        }
+
+        try {
+            return (bool)Db::table('agent_product_block')
+                ->where('agent_id', $agentId)
+                ->where('product_id', $productId)
+                ->where('block_shop', 1)
+                ->find();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function getAncestorAgentIds(int $agentId): array
+    {
+        if ($agentId <= 0) {
+            return [];
+        }
+
+        $ancestorIds = [];
+        $currentId = $agentId;
+        $visited = [];
+        try {
+            for ($i = 0; $i < 20; $i++) {
+                if (isset($visited[$currentId])) {
+                    break;
+                }
+                $visited[$currentId] = true;
+                $parentId = (int)(Db::table('agents')->where('id', $currentId)->value('parent_id') ?? 0);
+                if ($parentId <= 0) {
+                    break;
+                }
+                $ancestorIds[] = $parentId;
+                $currentId = $parentId;
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($ancestorIds)));
+    }
+
+    private function isProductBlockedByAncestor(int $agentId, int $productId): bool
+    {
+        if ($agentId <= 0 || $productId <= 0 || !$this->agentProductBlockTableExists()) {
+            return false;
+        }
+
+        $ancestorIds = $this->getAncestorAgentIds($agentId);
+        if (empty($ancestorIds)) {
+            return false;
+        }
+
+        try {
+            return (bool)Db::table('agent_product_block')
+                ->whereIn('agent_id', $ancestorIds)
+                ->where('product_id', $productId)
+                ->where('block_sub_agent', 1)
+                ->find();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function getOnlineServiceUrl(): string
+    {
+        $config = Db::table('system_config')
+            ->where('config_key', 'online_service_url')
+            ->find();
+        if ($config !== null) {
+            return trim((string)($config['config_value'] ?? ''));
+        }
+
+        return trim((string)(Db::table('config_h5')
+            ->where('config_key', 'online_service_url')
+            ->where('status', 1)
+            ->value('config_value') ?? ''));
     }
 }
