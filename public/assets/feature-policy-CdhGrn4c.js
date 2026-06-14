@@ -1,0 +1,1 @@
+import{k as e}from"./index-B3lmgT4X.js";function u(){return e.get({url:"/admin/featurepolicy/vueDefaults",successCodes:[1]})}function a(s){return e.post({url:"/admin/featurepolicy/saveSystemDefaults",params:s,successCodes:[0],rawResponse:!0})}export{u as f,a as s};

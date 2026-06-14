@@ -1,23 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
   <head>
-    <link rel="stylesheet" href="./static/uni.16cfb891.css">
-
+    <title>巨量号卡管理系统</title>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="巨量号卡管理系统"
+    />
+    <link rel="shortcut icon" type="image/png" href="/logo.png" />
+
+    <style>
+      /* 防止页面刷新时白屏的初始样式 */
+      html,
+      body,
+      #app {
+        min-height: 100%;
+        background-color: #fafbfc;
+      }
+
+      html.dark,
+      html.dark body,
+      html.dark #app {
+        color-scheme: dark;
+        background-color: #070707;
+      }
+
+      html.public-shop-light,
+      html.public-shop-light body,
+      html.public-shop-light #app {
+        color-scheme: light;
+        background-color: #f6f8fb !important;
+      }
+    </style>
+
     <script>
-      var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') ||
-        CSS.supports('top: constant(a)'))
-      document.write(
-        '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
-        (coverSupport ? ', viewport-fit=cover' : '') + '" />')
+      // 初始化 html class 主题属性
+      ;(function () {
+        try {
+          if (typeof Storage === 'undefined' || !window.localStorage) {
+            return
+          }
+
+          const isPublicShop = /^\/#\/shop(\/|$)|^\/#\/pay(\/|$)|^#\/shop(\/|$)|^#\/pay(\/|$)/.test(
+            window.location.hash || ''
+          )
+          if (isPublicShop) {
+            document.documentElement.classList.add('public-shop-light')
+            return
+          }
+
+          const themeType = localStorage.getItem('sys-theme')
+          if (themeType === 'dark') {
+            document.documentElement.classList.add('dark')
+          }
+        } catch (e) {
+          console.warn('Failed to apply initial theme:', e)
+        }
+      })()
     </script>
-    <title>巨量号卡</title>
-    <!--preload-links-->
-    <!--app-context-->
-    <script type="module" crossorigin src="./static/index-mampWmd7.js"></script>
-    <link rel="stylesheet" crossorigin href="./static/index-C_Avj3qz.css">
+    <script type="module" crossorigin src="/assets/index-B3lmgT4X.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Dbhf-7e8.css">
   </head>
+
   <body>
-    <div id="app"><!--app-html--></div>
+    <div id="app"></div>
   </body>
 </html>

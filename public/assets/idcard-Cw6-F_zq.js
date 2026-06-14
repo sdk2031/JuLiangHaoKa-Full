@@ -1,0 +1,1 @@
+import{k as e}from"./index-B3lmgT4X.js";function t(){return e.get({url:"/agent/idcard/vueInfo",successCodes:[1]})}function r(s){return e.post({url:"/agent/idcard/verify",params:s,successCodes:[0,1],rawResponse:!0})}export{t as f,r as s};
