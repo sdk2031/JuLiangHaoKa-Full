@@ -1,0 +1,1 @@
+import{z as a,a2 as n}from"./index-tT6Q5tuz.js";const t=(n={})=>a("/openapi/Contractsign/info",{},n),e=()=>n("/openapi/Contractsign/prepare",{}),o=(a={})=>n("/openapi/Contractsign/createPayment",a),p=(a={})=>n("/openapi/Contractsign/wechatPayAuthUrl",a),s=()=>n("/openapi/Contractsign/checkResult",{});export{p as a,s as b,o as c,t as g,e as p};

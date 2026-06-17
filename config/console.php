@@ -9,5 +9,7 @@ return [
         'generate:order:snapshots' => 'app\command\GenerateOrderSnapshots',
         'fix:longbao:orders' => 'app\command\FixLongbaoOrders',
         'fix:balance:logs' => 'app\command\FixBalanceLogs',
+        'fix:fixed:commission' => 'app\command\FixFixedCommission',
+        'apppack:worker' => 'app\command\AppPackWorker',
     ],
 ];

@@ -1,0 +1,1 @@
+import{d as n}from"./debounce-DA5a7ohM.js";import{cq as l}from"./index-BY52ryft.js";var g="Expected a function";function c(t,a,r){var i=!0,e=!0;if(typeof t!="function")throw new TypeError(g);return l(r)&&(i="leading"in r?!!r.leading:i,e="trailing"in r?!!r.trailing:e),n(t,a,{leading:i,maxWait:a,trailing:e})}export{c as t};

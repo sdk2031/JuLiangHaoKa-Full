@@ -6,7 +6,7 @@ use think\facade\Cache;
 
 /**
  * 滑块验证码服务
- * 定制开发的精美滑块验证码系统🆕
+ * 定制开发的精美滑块验证码系统 🆕
  */
 class SliderCaptchaService
 {
@@ -259,8 +259,7 @@ class SliderCaptchaService
             $verifyToken = self::makeVerifyToken($captchaId);
             Cache::set('slider_verified_' . $verifyToken, [
                 'time' => time(),
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'client' => self::clientFingerprint(),
             ], 300);
             
             return [
@@ -295,6 +294,10 @@ class SliderCaptchaService
             return false;
         }
 
+        if (self::isValidSignedToken($verifyToken)) {
+            return true;
+        }
+
         $verifyData = Cache::get('slider_verified_' . $verifyToken);
         if (!$verifyData || !is_array($verifyData)) {
             return false;
@@ -305,7 +308,7 @@ class SliderCaptchaService
             return false;
         }
 
-        if (($verifyData['ip'] ?? '') !== ($_SERVER['REMOTE_ADDR'] ?? '')) {
+        if (isset($verifyData['client']) && $verifyData['client'] !== self::clientFingerprint()) {
             Cache::delete('slider_verified_' . $verifyToken);
             return false;
         }
@@ -326,11 +329,70 @@ class SliderCaptchaService
 
     private static function makeVerifyToken($captchaId)
     {
-        return hash_hmac(
-            'sha256',
-            $captchaId . '|' . ($_SERVER['REMOTE_ADDR'] ?? '') . '|' . microtime(true) . '|' . bin2hex(random_bytes(8)),
-            app()->getRootPath() . 'slider-captcha'
-        );
+        $payload = [
+            'captcha_id' => (string)$captchaId,
+            'time' => time(),
+            'nonce' => bin2hex(random_bytes(8)),
+            'client' => self::clientFingerprint(),
+        ];
+        $payloadText = self::base64UrlEncode(json_encode($payload, JSON_UNESCAPED_SLASHES));
+        $signature = hash_hmac('sha256', $payloadText, self::signingKey());
+
+        return 'v2.' . $payloadText . '.' . $signature;
+    }
+
+    private static function isValidSignedToken($verifyToken)
+    {
+        $parts = explode('.', $verifyToken);
+        if (count($parts) !== 3 || $parts[0] !== 'v2') {
+            return false;
+        }
+
+        $payloadText = $parts[1];
+        $signature = $parts[2];
+        $expected = hash_hmac('sha256', $payloadText, self::signingKey());
+        if (!hash_equals($expected, $signature)) {
+            return false;
+        }
+
+        $payloadJson = self::base64UrlDecode($payloadText);
+        $payload = $payloadJson ? json_decode($payloadJson, true) : null;
+        if (!is_array($payload)) {
+            return false;
+        }
+
+        $time = intval($payload['time'] ?? 0);
+        if ($time <= 0 || time() - $time > 300) {
+            return false;
+        }
+
+        $client = (string)($payload['client'] ?? '');
+        return $client === '' || hash_equals($client, self::clientFingerprint());
+    }
+
+    private static function clientFingerprint()
+    {
+        return hash('sha256', (string)($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    }
+
+    private static function signingKey()
+    {
+        return app()->getRootPath() . '|slider-captcha';
+    }
+
+    private static function base64UrlEncode($value)
+    {
+        return rtrim(strtr(base64_encode((string)$value), '+/', '-_'), '=');
+    }
+
+    private static function base64UrlDecode($value)
+    {
+        $value = strtr((string)$value, '-_', '+/');
+        $padding = strlen($value) % 4;
+        if ($padding > 0) {
+            $value .= str_repeat('=', 4 - $padding);
+        }
+        return base64_decode($value, true);
     }
     
     /**

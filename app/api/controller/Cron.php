@@ -815,6 +815,16 @@ class Cron
         $configId = $config['id'];
         $limit = isset($config['order_sync_limit']) ? $config['order_sync_limit'] : 1000;
         $days = isset($config['order_sync_days']) ? $config['order_sync_days'] : 120;
+        if (intval(input('manual', 0)) === 1) {
+            $limit = intval(input('limit', 50));
+            $days = intval(input('days', 30));
+            if ($limit <= 0 || $limit > 100) {
+                $limit = 50;
+            }
+            if ($days <= 0 || $days > 120) {
+                $days = 30;
+            }
+        }
 
         try {
             $result = $this->callOrderSync($apiType, $configId, $limit, $days);
@@ -891,6 +901,9 @@ class Cron
                 if (is_object($response) && method_exists($response, 'getContent')) {
                     $data = json_decode($response->getContent(), true);
                     $msg = isset($data['msg']) ? $data['msg'] : '查询完成';
+                    if (is_array($data) && isset($data['code']) && intval($data['code']) !== 0) {
+                        return '查询失败: ' . $msg;
+                    }
                     return $msg;
                 }
                 
@@ -941,7 +954,14 @@ class Cron
             return json(array('code' => 1, 'msg' => '配置不存在'));
         }
 
+        $_POST['manual'] = 1;
+        $_GET['manual'] = 1;
+        $_REQUEST['manual'] = 1;
+
         $result = $this->runOrderSync($config);
+        if (strpos((string)$result, '查询失败') === 0 || strpos((string)$result, '查询异常') === 0 || strpos((string)$result, '执行异常') === 0) {
+            return json(array('code' => 1, 'msg' => $result));
+        }
         
         return json(array('code' => 0, 'msg' => $result));
     }

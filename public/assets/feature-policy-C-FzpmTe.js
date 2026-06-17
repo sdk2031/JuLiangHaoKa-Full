@@ -1,0 +1,1 @@
+import{a as e}from"./index-BY52ryft.js";function a(){return e.get({url:"/admin/featurepolicy/vueDefaults",successCodes:[1]})}function u(s){return e.post({url:"/admin/featurepolicy/saveSystemDefaults",params:s,successCodes:[0],rawResponse:!0})}export{a as f,u as s};

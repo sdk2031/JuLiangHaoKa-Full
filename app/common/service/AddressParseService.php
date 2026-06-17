@@ -11,7 +11,12 @@ class AddressParseService
 {
     private static $addressList = null;
     
-    private static $keyM = ['联系电话', '电话', '联系人手机号码', '联系人', '手机号码', '手机号', '手机', '姓名', '收货人', '收件人'];
+    private static $keyM = [
+        '证件姓名', '办理姓名', '客户姓名', '用户姓名', '收货人姓名', '收件人姓名', '联系人姓名',
+        '联系电话', '电话', '联系人手机号码', '联系人', '手机号码', '手机号', '手机',
+        '身份证号码', '身份证号', '证件号码', '证件照片', '身份证照片', '身份证正面', '身份证反面',
+        '姓名', '收货人', '收件人'
+    ];
     private static $keyA = ['收货地址', '收件地址', '退货地址', '所在地区', '所在地', '联系地址', '送货地址', '详细地址', '地区', '地址'];
     private static $keyD = ['重庆 ', '上海 ', '北京 ', '天津 ', '市辖区', '86-', '(86)', '（', '）', '&middot;'];
 
@@ -86,12 +91,16 @@ class AddressParseService
         $provinceKeywords = '北京|天津|上海|重庆|河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾|内蒙古|广西|西藏|宁夏|新疆|香港|澳门';
         
         if (preg_match('/([\x{4e00}-\x{9fa5}]{2,4})(1[3-9]\d{9})(?=' . $provinceKeywords . '|[\s]|$)/u', $text, $namePhoneMatch)) {
-            $result['name'] = $namePhoneMatch[1];
+            if (self::isValidNameCandidate($namePhoneMatch[1])) {
+                $result['name'] = $namePhoneMatch[1];
+            }
             $result['phone'] = $namePhoneMatch[2];
             $text = str_replace($namePhoneMatch[0], ' ', $text);
         }
         elseif (preg_match('/([\x{4e00}-\x{9fa5}]{2,4})(1[3-9]\d{9})/u', $text, $namePhoneMatch)) {
-            $result['name'] = $namePhoneMatch[1];
+            if (self::isValidNameCandidate($namePhoneMatch[1])) {
+                $result['name'] = $namePhoneMatch[1];
+            }
             $result['phone'] = $namePhoneMatch[2];
             $text = str_replace($namePhoneMatch[0], ' ', $text);
         }
@@ -192,7 +201,7 @@ class AddressParseService
             // 识别姓名（2-4个汉字，且还没有识别出姓名）
             if (!$matched && empty($result['name'])) {
                 $cleanPart = str_replace('XX', '', $part);
-                if (mb_strlen($cleanPart) >= 2 && mb_strlen($cleanPart) <= 4 && self::isChinese($cleanPart)) {
+                if (self::isValidNameCandidate($cleanPart)) {
                     $result['name'] = $cleanPart;
                     $matched = true;
                 }
@@ -484,6 +493,7 @@ class AddressParseService
         foreach (self::$keyM as $key) { $text = preg_replace('/' . preg_quote($key, '/') . '[：:\s]*/u', ' ', $text); }
         foreach (self::$keyA as $key) { $text = preg_replace('/' . preg_quote($key, '/') . '[：:\s]*/u', ' ', $text); }
         foreach (self::$keyD as $key) { $text = str_replace($key, '', $text); }
+        $text = preg_replace('/(^|\s)[xX×]\s*\d+(?=\s|$)/u', ' ', $text);
         return trim($text);
     }
 
@@ -510,6 +520,22 @@ class AddressParseService
 
     private static function isChinese($str) { return preg_match('/^[\x{4e00}-\x{9fa5}]+$/u', $str); }
 
+    private static function isValidNameCandidate($name)
+    {
+        $name = trim((string)$name);
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 4 || !self::isChinese($name)) {
+            return false;
+        }
+
+        $invalidNames = [
+            '证件', '姓名', '照片', '证件照', '身份证', '身份证号',
+            '身份证正', '身份证反', '正面', '反面', '上传', '已上传',
+            '联系电话', '手机号', '手机', '电话', '地址', '收货地址',
+            '收货人', '收件人', '联系人'
+        ];
+        return !in_array($name, $invalidNames, true);
+    }
+
     public static function parseSimple($text)
     {
         $result = ['name'=>'', 'phone'=>'', 'idcard'=>'', 'province'=>'', 'city'=>'', 'district'=>'', 'address'=>''];
@@ -534,7 +560,7 @@ class AddressParseService
 
         $parts = array_filter(preg_split('/\s+/', trim($text)));
         foreach ($parts as $part) {
-            if (mb_strlen($part) >= 2 && mb_strlen($part) <= 4 && self::isChinese($part) && empty($result['name'])) {
+            if (self::isValidNameCandidate($part) && empty($result['name'])) {
                 $result['name'] = $part;
             } else {
                 $result['address'] .= $part;

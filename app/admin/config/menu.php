@@ -542,6 +542,14 @@ return array(
                 'sort' => 1,
             ),
             array(
+                'id' => 'site_home_manage',
+                'name' => '官网管理',
+                'route' => '/admin/site/home',
+                'permission' => 'system:site',
+                'type' => 1,
+                'sort' => 1.5,
+            ),
+            array(
                 'id' => 'h5_config',
                 'name' => 'H5设置',
                 'route' => '/admin/configh5/index',

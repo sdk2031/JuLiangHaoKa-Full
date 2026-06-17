@@ -1,0 +1,1 @@
+import{a as n}from"./index-DXxLp_c9.js";function a(t){return n.get({url:"/admin/payment/records",params:t})}function r(){return n.get({url:"/admin/payment/statistics"})}function i(t){return n.get({url:"/admin/payment/detail",params:{id:t}})}function s(t){return n.post({url:"/admin/payment/refund",params:t,successCodes:[0],rawResponse:!0})}export{a,i as b,r as f,s as r};

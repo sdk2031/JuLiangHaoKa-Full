@@ -968,10 +968,24 @@ class Index extends Base
             return json(['code' => 401, 'msg' => '请先登录', 'data' => null]);
         }
 
+        $cacheKey = 'agent:dashboard_data:' . intval($agentId);
+        if (!input('no_cache')) {
+            $cached = $this->safeCacheGet($cacheKey, null);
+            if (is_array($cached)) {
+                return json([
+                    'code' => 0,
+                    'msg' => '获取成功',
+                    'data' => $cached,
+                ]);
+            }
+        }
+
+        $data = $this->getDashboardData($agentId);
+        $this->safeCacheSet($cacheKey, $data, 20);
         return json([
             'code' => 0,
             'msg' => '获取成功',
-            'data' => $this->getDashboardData($agentId),
+            'data' => $data,
         ]);
     }
 
@@ -1029,93 +1043,68 @@ class Index extends Base
         $totalVisits = 0;
         $shopMonthVisits = 0;
         if ($shopId > 0) {
-            $todayVisits = (int)Db::table('agent_shop_visits')
+            $visitStats = Db::table('agent_shop_visits')
+                ->field("
+                    COUNT(*) as total_visits,
+                    SUM(CASE WHEN visit_date = '" . date('Y-m-d') . "' THEN 1 ELSE 0 END) as today_visits,
+                    SUM(CASE WHEN visit_date >= '" . date('Y-m-01') . "' AND visit_date <= '" . date('Y-m-t') . "' THEN 1 ELSE 0 END) as month_visits
+                ")
                 ->where('shop_id', $shopId)
-                ->where('visit_date', date('Y-m-d'))
-                ->count();
-            $shopMonthVisits = (int)Db::table('agent_shop_visits')
-                ->where('shop_id', $shopId)
-                ->where('visit_date', 'like', date('Y-m') . '%')
-                ->count();
-            $totalVisits = (int)Db::table('agent_shop_visits')
-                ->where('shop_id', $shopId)
-                ->count();
+                ->find() ?: [];
+            $todayVisits = (int)($visitStats['today_visits'] ?? 0);
+            $shopMonthVisits = (int)($visitStats['month_visits'] ?? 0);
+            $totalVisits = (int)($visitStats['total_visits'] ?? 0);
         }
 
         // 2. 今日订单量
         $todayStartStr = date('Y-m-d 00:00:00');
         $todayEndStr = date('Y-m-d 23:59:59');
-        
-        $todayOrderCount = Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('create_time', '>=', $todayStartStr)
-            ->where('create_time', '<=', $todayEndStr)
-            ->count();
 
-        // 最近7天佣金金额
-        $todayOrderAmount = Db::table('order')
+        $orderOverviewStats = Db::table('order')
             ->where('agent_id', $agentIdStr)
-            ->where('create_time', '>=', $last7DaysStr)
-            ->where('create_time', '<=', $todayEndStr)
-            ->sum('commission');
+            ->field("
+                COUNT(*) as total_orders,
+                SUM(CASE WHEN create_time >= '{$todayStartStr}' AND create_time <= '{$todayEndStr}' THEN 1 ELSE 0 END) as today_order_count,
+                SUM(CASE WHEN create_time >= '{$last7DaysStr}' AND create_time <= '{$todayEndStr}' THEN commission ELSE 0 END) as recent_commission,
+                SUM(CASE WHEN order_status <> 7 THEN commission ELSE 0 END) as estimated_commission_total,
+                SUM(CASE WHEN pay_status = 2 OR (refund_time IS NOT NULL AND refund_time <> '' AND refund_time <> '0000-00-00 00:00:00') THEN 1 ELSE 0 END) as refund_order_count,
+                SUM(CASE WHEN order_status = 3 AND create_time >= '{$last7DaysStr}' AND create_time <= '{$todayEndStr}' THEN 1 ELSE 0 END) as pending_photo_count,
+                SUM(CASE WHEN order_status = 1 AND update_time >= '{$last7DaysStr}' AND update_time <= '{$todayEndStr}' THEN 1 ELSE 0 END) as pending_delivery_count,
+                SUM(CASE WHEN create_time >= '{$monthStartStr}' AND create_time <= '{$monthEndStr}' THEN 1 ELSE 0 END) as month_order_count,
+                SUM(CASE WHEN order_status = 4 AND jh_time >= '{$monthStartStr}' AND jh_time <= '{$monthEndStr}' THEN 1 ELSE 0 END) as month_active_orders,
+                SUM(CASE WHEN order_status IN (4, 5) THEN 1 ELSE 0 END) as total_activated_orders,
+                SUM(CASE WHEN order_status = 0 THEN 1 ELSE 0 END) as status_0,
+                SUM(CASE WHEN order_status = 1 THEN 1 ELSE 0 END) as status_1,
+                SUM(CASE WHEN order_status = 2 THEN 1 ELSE 0 END) as status_2,
+                SUM(CASE WHEN order_status = 3 THEN 1 ELSE 0 END) as status_3,
+                SUM(CASE WHEN order_status = 4 THEN 1 ELSE 0 END) as status_4,
+                SUM(CASE WHEN order_status = 5 THEN 1 ELSE 0 END) as status_5,
+                SUM(CASE WHEN order_status = 6 THEN 1 ELSE 0 END) as status_6,
+                SUM(CASE WHEN order_status = 7 THEN 1 ELSE 0 END) as status_7
+            ")
+            ->find() ?: [];
 
-        // 订单状态统计（当前代理）
-        $orderStatusRaw = Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->field('order_status, COUNT(*) as cnt')
-            ->group('order_status')
-            ->select()
-            ->toArray();
+        $todayOrderCount = (int)($orderOverviewStats['today_order_count'] ?? 0);
+        $todayOrderAmount = (float)($orderOverviewStats['recent_commission'] ?? 0);
 
         $orderStatusStats = [
-            0 => 0, // 已提交
-            1 => 0, // 待发货
-            2 => 0, // 已发货
-            3 => 0, // 待传照片
-            4 => 0, // 已激活
-            5 => 0, // 已结算
-            6 => 0, // 结算失败
-            7 => 0  // 审核失败
+            0 => (int)($orderOverviewStats['status_0'] ?? 0), // 已提交
+            1 => (int)($orderOverviewStats['status_1'] ?? 0), // 待发货
+            2 => (int)($orderOverviewStats['status_2'] ?? 0), // 已发货
+            3 => (int)($orderOverviewStats['status_3'] ?? 0), // 待传照片
+            4 => (int)($orderOverviewStats['status_4'] ?? 0), // 已激活
+            5 => (int)($orderOverviewStats['status_5'] ?? 0), // 已结算
+            6 => (int)($orderOverviewStats['status_6'] ?? 0), // 结算失败
+            7 => (int)($orderOverviewStats['status_7'] ?? 0)  // 审核失败
         ];
-        foreach ($orderStatusRaw as $row) {
-            $status = (int)($row['order_status'] ?? -1);
-            if (array_key_exists($status, $orderStatusStats)) {
-                $orderStatusStats[$status] = (int)($row['cnt'] ?? 0);
-            }
-        }
         $totalStatusOrders = array_sum($orderStatusStats);
         $settledRatio = $totalStatusOrders > 0 ? round(($orderStatusStats[5] / $totalStatusOrders) * 100) : 0;
 
         // 顶部概览数据
-        $estimatedCommissionTotal = (float)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('order_status', '<>', 7)
-            ->sum('commission');
-        $refundOrderCount = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where(function ($query) {
-                $query->where('pay_status', 2)
-                    ->whereOr(function ($subQuery) {
-                        $subQuery->whereNotNull('refund_time')
-                            ->where('refund_time', '<>', '')
-                            ->where('refund_time', '<>', '0000-00-00 00:00:00');
-                    });
-            })
-            ->count();
-
-        $pendingPhotoCount = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('order_status', 3)
-            ->where('create_time', '>=', $last7DaysStr)
-            ->where('create_time', '<=', $todayEndStr)
-            ->count();
-
-        $pendingDeliveryCount = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('order_status', 1)
-            ->where('update_time', '>=', $last7DaysStr)
-            ->where('update_time', '<=', $todayEndStr)
-            ->count();
+        $estimatedCommissionTotal = (float)($orderOverviewStats['estimated_commission_total'] ?? 0);
+        $refundOrderCount = (int)($orderOverviewStats['refund_order_count'] ?? 0);
+        $pendingPhotoCount = (int)($orderOverviewStats['pending_photo_count'] ?? 0);
+        $pendingDeliveryCount = (int)($orderOverviewStats['pending_delivery_count'] ?? 0);
 
         $pendingTicketCount = 0;
         if ($workorderPluginEnabled) {
@@ -1164,27 +1153,10 @@ class Index extends Base
 
         // 3. 订单和激活数据
         // 顶部与首页统计优先使用 order 表实时数据，避免 agents 汇总字段未同步导致展示不准
-        $monthOrderCount = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('create_time', '>=', $monthStartStr)
-            ->where('create_time', '<=', $monthEndStr)
-            ->count();
-
-        $monthActiveOrders = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->where('order_status', 4)
-            ->where('jh_time', '>=', $monthStartStr)
-            ->where('jh_time', '<=', $monthEndStr)
-            ->count();
-
-        $totalOrders = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->count();
-
-        $totalActivatedOrders = (int)Db::table('order')
-            ->where('agent_id', $agentIdStr)
-            ->whereIn('order_status', [4, 5])
-            ->count();
+        $monthOrderCount = (int)($orderOverviewStats['month_order_count'] ?? 0);
+        $monthActiveOrders = (int)($orderOverviewStats['month_active_orders'] ?? 0);
+        $totalOrders = (int)($orderOverviewStats['total_orders'] ?? 0);
+        $totalActivatedOrders = (int)($orderOverviewStats['total_activated_orders'] ?? 0);
 
         // 计算总激活率
         $activationRate = $totalOrders > 0 ? round(($totalActivatedOrders / $totalOrders) * 100, 2) : 0;
@@ -1192,52 +1164,35 @@ class Index extends Base
         // 4. 新增代理商（月）- 当前代理的下级代理
         $monthStartMs = strtotime($monthStartStr) * 1000;
         $monthEndMs = strtotime($monthEndStr) * 1000;
-        
-        $monthNewAgents = Db::table('agents')
-            ->where('parent_id', $agentId)
-            ->where('create_time', '>=', $monthStartMs)
-            ->where('create_time', '<=', $monthEndMs)
-            ->count();
 
-        // 总代理商数
-        $totalAgents = Db::table('agents')
+        $childAgentStats = Db::table('agents')
             ->where('parent_id', $agentId)
-            ->count();
+            ->field("
+                COUNT(*) as total_agents,
+                SUM(CASE WHEN create_time >= {$monthStartMs} AND create_time <= {$monthEndMs} THEN 1 ELSE 0 END) as month_new_agents,
+                SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified_agents
+            ")
+            ->find() ?: [];
+        $monthNewAgents = (int)($childAgentStats['month_new_agents'] ?? 0);
+        $totalAgents = (int)($childAgentStats['total_agents'] ?? 0);
 
         // 5. 获取预估佣金（分别统计待结算和已结算，只统计有效记录）
-        // 本月待结算佣金
-        $monthPendingCommission = Db::table('agent_balance_logs')
+        $monthStartTs = strtotime($monthStartStr);
+        $monthEndTs = strtotime($monthEndStr);
+        $balanceStats = Db::table('agent_balance_logs')
             ->where('agent_id', $agentId)
-            ->where('type', 'pending')
             ->where('status', 1)
-            ->where('create_time', '>=', strtotime($monthStartStr))
-            ->where('create_time', '<=', strtotime($monthEndStr))
-            ->sum('amount');
-
-        // 本月已结算佣金（包括订单佣金、上级抽成、商务奖励）
-        $monthSettledCommission = Db::table('agent_balance_logs')
-            ->where('agent_id', $agentId)
-            ->where('type', 'in')
-            ->where('status', 1)
-            ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
-            ->where('create_time', '>=', strtotime($monthStartStr))
-            ->where('create_time', '<=', strtotime($monthEndStr))
-            ->sum('amount');
-
-        // 总待结算佣金
-        $totalPendingCommission = Db::table('agent_balance_logs')
-            ->where('agent_id', $agentId)
-            ->where('type', 'pending')
-            ->where('status', 1)
-            ->sum('amount');
-
-        // 总已结算佣金（包括订单佣金、上级抽成、商务奖励）
-        $totalSettledCommission = Db::table('agent_balance_logs')
-            ->where('agent_id', $agentId)
-            ->where('type', 'in')
-            ->where('status', 1)
-            ->whereIn('sub_type', ['order', 'parent', 'secret_price'])
-            ->sum('amount');
+            ->field("
+                SUM(CASE WHEN type = 'pending' AND create_time >= {$monthStartTs} AND create_time <= {$monthEndTs} THEN amount ELSE 0 END) as month_pending_commission,
+                SUM(CASE WHEN type = 'in' AND sub_type IN ('order', 'parent', 'secret_price') AND create_time >= {$monthStartTs} AND create_time <= {$monthEndTs} THEN amount ELSE 0 END) as month_settled_commission,
+                SUM(CASE WHEN type = 'pending' THEN amount ELSE 0 END) as total_pending_commission,
+                SUM(CASE WHEN type = 'in' AND sub_type IN ('order', 'parent', 'secret_price') THEN amount ELSE 0 END) as total_settled_commission
+            ")
+            ->find() ?: [];
+        $monthPendingCommission = (float)($balanceStats['month_pending_commission'] ?? 0);
+        $monthSettledCommission = (float)($balanceStats['month_settled_commission'] ?? 0);
+        $totalPendingCommission = (float)($balanceStats['total_pending_commission'] ?? 0);
+        $totalSettledCommission = (float)($balanceStats['total_settled_commission'] ?? 0);
 
         // 6. 获取最新产品（产品上新模块）
         $latestProducts = Db::table('product')
@@ -1440,7 +1395,7 @@ class Index extends Base
         $shopTotalOrders = (int)($shopInfo['total_orders'] ?? 0);
         $shopMonthOrders = (int)($shopInfo['month_orders'] ?? 0);
         $shopTodayOrders = (int)($shopInfo['today_orders'] ?? 0);
-        $verifiedAgents = (int)Db::table('agents')->where('parent_id', $agentId)->where('is_verified', 1)->count();
+        $verifiedAgents = (int)($childAgentStats['verified_agents'] ?? 0);
         $unverifiedAgents = max(0, (int)$totalAgents - $verifiedAgents);
         $shopTrendDatasets = $this->buildAgentTrendDatasets((int)$agentId);
         $teamTrendDatasets = $hasTeamDashboard

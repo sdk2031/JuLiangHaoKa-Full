@@ -4,17 +4,25 @@ namespace app\agent\controller;
 use app\common\service\AgentDomainBrandService;
 use app\agent\service\AgentTokenService;
 use app\common\traits\SafeCacheTrait;
+use app\common\traits\SlowRequestLogTrait;
 class Base
 {
     use SafeCacheTrait;
+    use SlowRequestLogTrait;
 
     /**
      * 构造函数📝
      */
     public function __construct()
     {
+        $this->startSlowRequestTimer();
         // 调用初始化方法
         $this->initialize();
+    }
+
+    public function __destruct()
+    {
+        $this->writeSlowRequestLog('agent');
     }
     
     /**

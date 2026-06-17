@@ -11,25 +11,46 @@
         '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
         (coverSupport ? ', viewport-fit=cover' : '') + '" />')
     </script>
+    <link rel="icon" href="data:," />
     <title>号卡系统</title>
     <script>
       (function() {
+        function resolveIconUrl(config) {
+          var icon = config && (config.agent_logo || config.site_logo || config.site_favicon || config.logo || config.system_logo || '');
+          icon = String(icon || '').trim();
+          if (!icon) return '';
+          if (/^(https?:)?\/\//i.test(icon) || icon.indexOf('data:') === 0 || icon.indexOf('blob:') === 0) return icon;
+          return icon.charAt(0) === '/' ? icon : '/' + icon;
+        }
+        function applyFavicon(href) {
+          var links = Array.prototype.slice.call(document.querySelectorAll('link[rel*="icon"]'));
+          if (!links.length) {
+            links = [document.createElement('link')];
+          }
+          links.forEach(function(link) {
+            link.rel = 'icon';
+            link.href = href || 'data:,';
+            if (!link.parentNode) document.head.appendChild(link);
+          });
+        }
         try {
           var systemConfig = localStorage.getItem('systemConfig');
+          var config = systemConfig ? JSON.parse(systemConfig) : {};
           if (systemConfig) {
-            var config = JSON.parse(systemConfig);
             if (config.system_name) {
               document.title = config.system_name;
             }
           }
+          applyFavicon(resolveIconUrl(config));
         } catch (e) {
+          applyFavicon('');
           console.error('设置标题失败:', e);
         }
       })();
     </script>
     <!--preload-links-->
     <!--app-context-->
-    <script type="module" crossorigin src="./static/index-Do4T_Ydv.js"></script>
+    <script type="module" crossorigin src="./static/index-tT6Q5tuz.js"></script>
     <link rel="stylesheet" crossorigin href="./static/index-BiOh1GEY.css">
   </head>
   <body>

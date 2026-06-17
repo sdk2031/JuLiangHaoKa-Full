@@ -1241,6 +1241,11 @@ class Shop
             Log::info('路由到巨量互联Order', ['api_name' => $apiName, 'product_id' => $productId]);
             return app('app\api\controller\kapi\jlcloud\Order')->submitOrder();
         } elseif (strpos($apiName, '91敢探号') !== false) {
+            $localOrderId = intval(input('_local_order_id', request()->param('_local_order_id', 0)));
+            $paidExistingOrder = intval(input('_paid_existing_order', request()->param('_paid_existing_order', 0)));
+            if ($localOrderId > 0 || $paidExistingOrder === 1) {
+                return json(app('app\api\controller\kapi\gth91\Order')->submitExistingOrder($localOrderId));
+            }
             return app('app\api\controller\kapi\gth91\Order')->submitOrder();
         } else {
             return $this->submit();

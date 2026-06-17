@@ -1,0 +1,1 @@
+import{z as a,a2 as n}from"./index-DEIYj5d1.js";const t=(n={})=>a("/openapi/Contractsign/info",{},n),e=()=>n("/openapi/Contractsign/prepare",{}),o=(a={})=>n("/openapi/Contractsign/createPayment",a),p=()=>n("/openapi/Contractsign/checkResult",{});export{p as a,o as c,t as g,e as p};
