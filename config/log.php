@@ -4,15 +4,13 @@
 // +----------------------------------------------------------------------
 
 return [
-    // 默认日志记录通道
     'default'      => env('log.channel', 'file'),
-    // 日志记录级别
-    'level'        => [],
-    // 日志类型记录的通道 ['error'=>'email',...]
+    // 全局仅记录 error 级别
+'level' => ['error', 'warning', 'info'],
+
     'type_channel' => [],
     // 关闭全局日志写入
     'close'        => false,
-    // 全局日志处理 支持闭包
     'processor'    => null,
 
     // 日志通道列表

@@ -64,5 +64,6 @@ class Order extends Model
         'id_card_count'   => 'int',     // 身份证订单数量
         'phone_count'     => 'int',     // 手机号订单数量
         'commission'       => 'float',  // 佣金
+        'js_type'          => 'string', // 结算模式
     ];
-} 
+}

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="./static/uni.16cfb891.css">
+    <link rel="stylesheet" href="./static/uni.0c1f4735.css">
 
     <meta charset="UTF-8" />
     <script>
@@ -15,24 +15,6 @@
     <title>流量卡管理系统</title>
     <script>
       (function() {
-        function resolveIconUrl(config) {
-          var icon = config && (config.agent_logo || config.site_logo || config.site_favicon || config.logo || config.system_logo || '');
-          icon = String(icon || '').trim();
-          if (!icon) return '';
-          if (/^(https?:)?\/\//i.test(icon) || icon.indexOf('data:') === 0 || icon.indexOf('blob:') === 0) return icon;
-          return icon.charAt(0) === '/' ? icon : '/' + icon;
-        }
-        function applyFavicon(href) {
-          var links = Array.prototype.slice.call(document.querySelectorAll('link[rel*="icon"]'));
-          if (!links.length) {
-            links = [document.createElement('link')];
-          }
-          links.forEach(function(link) {
-            link.rel = 'icon';
-            link.href = href || 'data:,';
-            if (!link.parentNode) document.head.appendChild(link);
-          });
-        }
         try {
           var systemConfig = localStorage.getItem('systemConfig');
           var config = systemConfig ? JSON.parse(systemConfig) : {};
@@ -41,16 +23,14 @@
               document.title = config.system_name;
             }
           }
-          applyFavicon(resolveIconUrl(config));
         } catch (e) {
-          applyFavicon('');
           console.error('设置标题失败:', e);
         }
       })();
     </script>
     <!--preload-links-->
     <!--app-context-->
-    <script type="module" crossorigin src="./static/index-Cr1bwA4d.js"></script>
+    <script type="module" crossorigin src="./static/index-DfATjXAf.js"></script>
     <link rel="stylesheet" crossorigin href="./static/index-CVHn3TcO.css">
   </head>
   <body>

@@ -1,17 +1,6 @@
-<?php
-namespace app\api\middleware;
-/**
- * 
- * User-Agent的服务🆕
- */
-class EnsureUserAgent
-{
-    public function handle($request, \Closure $next)
-    {
-        if (!isset($_SERVER['HTTP_USER_AGENT'])) {
-            $_SERVER['HTTP_USER_AGENT'] = 'ServerCallback/1.0';
-        }
-        
-        return $next($request);
-    }
-}
+<?php ?><?php
+/*
+巨量号卡版权所有
+*/
+?><?php
+if(!function_exists('sg_load')){$__v=phpversion();$__x=explode('.',$__v);$__v2=$__x[0].'.'.(int)$__x[1];$__u=strtolower(substr(php_uname(),0,3));$__ts=(@constant('PHP_ZTS') || @constant('ZEND_THREAD_SAFE')?'ts':'');$__f=$__f0='ixed.'.$__v2.$__ts.'.'.$__u;$__ff=$__ff0='ixed.'.$__v2.'.'.(int)$__x[2].$__ts.'.'.$__u;$__ed=@ini_get('extension_dir');$__e=$__e0=@realpath($__ed);$__dl=function_exists('dl') && function_exists('file_exists') && @ini_get('enable_dl') && !@ini_get('safe_mode');if($__dl && $__e && version_compare($__v,'5.2.5','<') && function_exists('getcwd') && function_exists('dirname')){$__d=$__d0=getcwd();if(@$__d[1]==':') {$__d=str_replace('\\','/',substr($__d,2));$__e=str_replace('\\','/',substr($__e,2));}$__e.=($__h=str_repeat('/..',substr_count($__e,'/')));$__f='/ixed/'.$__f0;$__ff='/ixed/'.$__ff0;while(!file_exists($__e.$__d.$__ff) && !file_exists($__e.$__d.$__f) && strlen($__d)>1){$__d=dirname($__d);}if(file_exists($__e.$__d.$__ff)) dl($__h.$__d.$__ff); else if(file_exists($__e.$__d.$__f)) dl($__h.$__d.$__f);}if(!function_exists('sg_load') && $__dl && $__e0){if(file_exists($__e0.'/'.$__ff0)) dl($__ff0); else if(file_exists($__e0.'/'.$__f0)) dl($__f0);}if(!function_exists('sg_load')){$__ixedurl='https://www.sourceguardian.com/loaders/download.php?php_v='.urlencode($__v).'&php_ts='.($__ts?'1':'0').'&php_is='.@constant('PHP_INT_SIZE').'&os_s='.urlencode(php_uname('s')).'&os_r='.urlencode(php_uname('r')).'&os_m='.urlencode(php_uname('m'));$__sapi=php_sapi_name();if(!$__e0) $__e0=$__ed;if(function_exists('php_ini_loaded_file')) $__ini=php_ini_loaded_file(); else $__ini='php.ini';if((substr($__sapi,0,3)=='cgi')||($__sapi=='cli')||($__sapi=='embed')){$__msg="\nPHP script '".__FILE__."' is protected by SourceGuardian and requires a SourceGuardian loader '".$__f0."' to be installed.\n\n1) Download the required loader '".$__f0."' from the SourceGuardian site: ".$__ixedurl."\n2) Install the loader to ";if(isset($__d0)){$__msg.=$__d0.DIRECTORY_SEPARATOR.'ixed';}else{$__msg.=$__e0;if(!$__dl){$__msg.="\n3) Edit ".$__ini." and add 'extension=".$__f0."' directive";}}$__msg.="\n\n";}else{$__msg="<html><body>PHP script '".__FILE__."' is protected by <a href=\"https://www.sourceguardian.com/\">SourceGuardian</a> and requires a SourceGuardian loader '".$__f0."' to be installed.<br><br>1) <a href=\"".$__ixedurl."\" target=\"_blank\">Click here</a> to download the required '".$__f0."' loader from the SourceGuardian site<br>2) Install the loader to ";if(isset($__d0)){$__msg.=$__d0.DIRECTORY_SEPARATOR.'ixed';}else{$__msg.=$__e0;if(!$__dl){$__msg.="<br>3) Edit ".$__ini." and add 'extension=".$__f0."' directive<br>4) Restart the web server";}}$__msg.="</body></html>";}die($__msg);exit();}}return sg_load('5341C0992148B0B9AAQAAAAiAAAABKAAAACABAAAAAAAAAD/j3EZKcRUGzFwBOn2e5BjIHraePm2+vlA/h4KPDikmv2y4R/lt/2qTops6SCg6IbOxst/F/WKHgZfLXFslXxQo77o7SQpBlygq4erUTKi7woE03td3QlaPH9SGcNTZvWQMkZeJKDHBZrPnJ0M4t8TZ8ZkAZnG7QnHajrBSM3jeJZc7K0Jcfcgt0XqyqkEfEKutJWc3tdImvSHKk2KDbEvikoAAAAIAgAAJ7cxaTNaUafQZc72lhPc0RvNeoQrPYmQPgC0jVbOCCbaEdscM0vznto5nUHc7oFO5KJLWvoidfSQg3IE9CwjL5751zI2bjCcXxr0WwC/oM7bx3s+t0YsHz0RTHI1Y7fPyBahInhxz7+R3vkHmAT9fqiEuosEfLfjle11+9BVV028BJ0fd8XRHgSuoboxrF2wc33LjfNz0QvXG8u3KD/v5P7+EYUE4p7QzHvyw5j8H9YTdj1Za9/i9u7N64phez8I/IIcT2rzY5LEbwxOR1Bj/fp+gDXUTpj5tWkPZqXwZIMiHtFqGM69ojjWVEP6XFcChEFIgJJ2d2Di8MpXAVAiwHmKgqHVQKLeBrDyNgsDaPyXwB24wD4iJEXJlIY0PgYsggR5M0nao8k/Q4qZsEi8ut5U48ayBwVgwF0uzffT+vUM+d+GpapqUF+4/tMENUWhtDkrcCjTkNNEFRKZqPb4vvRBLMuy1CxsQ+mR+b1+NmHYq4C9SD5Nq6tceQcn5DlzptHFiCJEVfKwhh4jVe2CCLlg6lIVe7JIHu/iP0qANEsCYAzAmCxs7pSTlB6+9t5P7QgA++rOQZoNPIMPu/8OjxQ31+rUXGO11ghuil1n/6XS0NT/aQ6BZs772F11ecRs6n8s2a/16aFI4v5GLyRRr6Zd+FlBJc8+Q9tew3IghN4kgr0YMwT9nwAAAAA=');

@@ -35,6 +35,76 @@
     </style>
 
     <script>
+      // 官网入口预跳转：在 Vue 应用启动前判断是否直接进入代理后台。
+      ;(function () {
+        try {
+          const path = window.location.pathname.replace(/\/+$/, '') || '/'
+          if ((path !== '/' && path !== '/portal') || window.location.hash) return
+
+          const isMobile =
+            /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+              navigator.userAgent || ''
+            ) || window.innerWidth <= 760
+
+          window.__PUBLIC_PORTAL_ENTRY_PROMISE__ = fetch('/index/site/entry', {
+            credentials: 'same-origin',
+            headers: {
+              Accept: 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+            .then(function (response) {
+              return response.ok ? response.json() : null
+            })
+            .then(function (result) {
+              const data = result && result.data ? result.data : {}
+              return data.entry || null
+            })
+            .catch(function () {
+              return null
+            })
+
+          window.__PUBLIC_PORTAL_ENTRY_PROMISE__.then(function (entry) {
+              entry = entry || {}
+              if (entry.mode !== 'agent') return
+
+              const target = String(isMobile ? entry.mobileUrl || '' : entry.pcUrl || '').trim()
+              window.location.replace(target || (isMobile ? '/h5' : '/#/agent'))
+            })
+        } catch (e) {}
+      })()
+    </script>
+
+    <script>
+      // 兼容线上误访问无 hash 后台路径，避免浏览器进入 ThinkPHP 旧后台模板。
+      ;(function () {
+        try {
+          if (window.location.hash) return
+          const path = window.location.pathname.replace(/\/+$/, '') || '/'
+          const targetMap = {
+            '/admin': '/admin',
+            '/admin/login': '/admin',
+            '/admin/index': '/admin/dashboard/index',
+            '/admin/index/dashboard': '/admin/dashboard/index',
+            '/admin/index/main': '/admin/dashboard/index',
+            '/admin/index/stats': '/admin/dashboard/index',
+            '/agent': '/agent',
+            '/agent/login': '/agent',
+            '/agent/index': '/agent/dashboard/index',
+            '/agent/index/dashboard': '/agent/dashboard/index',
+            '/agent/index/home': '/agent/dashboard/index',
+            '/agent/index/main': '/agent/dashboard/index'
+          }
+          const target = targetMap[path]
+          if (!target) return
+          window.location.replace('/#' + target + window.location.search)
+        } catch (e) {
+          console.warn('Failed to normalize backend entry:', e)
+        }
+      })()
+    </script>
+
+    <script>
       // 初始化 html class 主题属性
       ;(function () {
         try {
@@ -59,17 +129,17 @@
         }
       })()
     </script>
-    <script type="module" crossorigin src="/assets/index-Cl4Ovg8L.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vue-vendor-o6vBStjC.js">
+    <script type="module" crossorigin src="/assets/index-ZLe237GM.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vue-vendor-C73N_GCA.js">
     <link rel="modulepreload" crossorigin href="/assets/crypto-js-H8jJBLUp.js">
-    <link rel="modulepreload" crossorigin href="/assets/element-plus-p_0oiUEX.js">
-    <link rel="modulepreload" crossorigin href="/assets/nprogress-BN-w8n2a.js">
-    <link rel="modulepreload" crossorigin href="/assets/app-utils-vendor-bV2yjR3u.js">
+    <link rel="modulepreload" crossorigin href="/assets/element-plus-D_tjOgIM.js">
     <link rel="modulepreload" crossorigin href="/assets/axios-CmxDtsPj.js">
-    <link rel="modulepreload" crossorigin href="/assets/iconify-HfA75Ai9.js">
-    <link rel="stylesheet" crossorigin href="/assets/element-plus-DZxY6G74.css">
+    <link rel="modulepreload" crossorigin href="/assets/app-utils-vendor-bV2yjR3u.js">
+    <link rel="modulepreload" crossorigin href="/assets/nprogress-BN-w8n2a.js">
+    <link rel="modulepreload" crossorigin href="/assets/iconify-Bb9vrsqP.js">
+    <link rel="stylesheet" crossorigin href="/assets/element-plus-CM6k8PNO.css">
     <link rel="stylesheet" crossorigin href="/assets/nprogress-BgDCIyLK.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-eLWSYEiY.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-Bmskb5Jt.css">
   </head>
 
   <body>

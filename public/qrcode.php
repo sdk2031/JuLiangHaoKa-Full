@@ -32,8 +32,8 @@ try {
     // 计算矩阵点大小
     $matrixPointSize = max(1, min(10, intval($size / 25)));
 
-    // 错误纠正级别
-    $errorCorrectionLevel = 'H'; // 最高级别
+    // 错误纠正级别 - L级别生成的二维码更简洁
+    $errorCorrectionLevel = 'L';
 
     if ($format === 'base64') {
         // 生成到内存缓冲区

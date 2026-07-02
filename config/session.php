@@ -9,9 +9,9 @@ return [
     // SESSION_ID的提交变量,解决flash上传跨域
     'var_session_id' => '',
     // 驱动方式 支持file cache
-    'type'           => 'file',
+    'type'           => env('session.type', 'file'),
     // 存储连接标识 当type使用cache的时候有效
-    'store'          => null,
+    'store'          => env('session.store', null),
     // 过期时间
     'expire'         => 1440,
     // 前缀
@@ -20,4 +20,14 @@ return [
     'path'           => runtime_path() . 'session',
     // 是否自动开启 SESSION
     'auto_start'     => true,
+    // httponly设置
+    'httponly'       => true,
+    // 是否使用安全连接
+    'secure'         => false,
+    // cookie 路径
+    'cookie_path'    => '/',
+    // cookie 域名
+    'domain'         => '',
+    // SameSite设置
+    'samesite'       => 'Lax',
 ];

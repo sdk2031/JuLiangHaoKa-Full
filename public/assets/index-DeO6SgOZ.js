@@ -1,0 +1,1 @@
+import{a as e}from"./index-Ds4z-wAo.js";function c(t){return e.get({url:"/index/product/vueList",params:t,successCodes:[1]})}function r(t){return e.get({url:"/index/product/vueDetail",params:{id:t},successCodes:[1]})}export{r as a,c as f};

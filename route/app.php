@@ -14,6 +14,30 @@ Route::get('captcha/generate', 'app\agent\controller\Captcha@generate');
 Route::get('agent/captcha/image', 'app\agent\controller\Captcha@image');
 Route::get('agent/captcha/generate', 'app\agent\controller\Captcha@generate');
 Route::get('index/captcha/image', 'app\index\controller\Captcha@image');
+Route::get('index/pay/success/:payType', 'app\index\controller\Pay@success');
+Route::get('index/pay/success', 'app\index\controller\Pay@success');
+
+// 产品合集控制器命名统一为 Productcollection；兼容前端/菜单中的 product_collection 路径
+$productCollectionActions = [
+    'index',
+    'vueOptions',
+    'vueInfo',
+    'getCollections',
+    'addCollection',
+    'editCollection',
+    'deleteCollection',
+    'getCollectionProducts',
+    'getAvailableProducts',
+    'addProducts',
+    'removeProduct',
+    'clearProducts',
+    'updateSort',
+    'generatePoster',
+];
+foreach ($productCollectionActions as $action) {
+    Route::rule("admin/product_collection/{$action}", "app\\admin\\controller\\Productcollection@{$action}", 'GET|POST');
+    Route::rule("agent/product_collection/{$action}", "app\\agent\\controller\\Productcollection@{$action}", 'GET|POST');
+}
 
 // 店铺公开短链接：/shop/{shop_code}
 Route::get('shop/:shop_code', 'app\index\controller\Shop@index');

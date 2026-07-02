@@ -427,5 +427,6 @@ Route::group('api/cron', function () {
     Route::rule('run', 'api/Cron/run', 'GET|POST');
     Route::rule('triggerProductSync', 'api/Cron/triggerProductSync', 'GET|POST');
     Route::rule('triggerOrderSync', 'api/Cron/triggerOrderSync', 'GET|POST');
+    Route::rule('triggerContractSignSync', 'api/Cron/triggerContractSignSync', 'GET|POST');
     Route::rule('resetAgentMonthlyStats', 'api/Cron/resetAgentMonthlyStats', 'GET|POST');
 });

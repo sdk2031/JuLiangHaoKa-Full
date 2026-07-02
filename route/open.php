@@ -7,7 +7,7 @@ use think\facade\Route;
 
 // 基础认证接口 - 使用v1前缀避免与现有模块冲突
 Route::group('v1', function () {
-    Route::post('auth/test', 'app\open\controller\Auth@test');                    // 连通性测试
+    Route::rule('auth/test', 'app\open\controller\Auth@test', 'GET|POST');        // 连通性测试
     Route::get('auth/balance', 'app\open\controller\Auth@getBalance');           // 查询余额
     Route::get('auth/stats', 'app\open\controller\Auth@getStats');               // 使用统计
     Route::get('auth/info', 'app\open\controller\Auth@getInfo');                 // 合作伙伴信息
