@@ -1,0 +1,1 @@
+import{a as e}from"./index-BVFzSg3T.js";function a(){return e.get({url:"/admin/apppack/info",successCodes:[1]})}function n(){return e.get({url:"/admin/apppack/remoteInfo",successCodes:[1],rawResponse:!0})}function p(r){return e.get({url:"/admin/apppack/records",params:r,successCodes:[0,1],rawResponse:!0})}export{p as a,a as f,n as r};

@@ -527,10 +527,28 @@ CREATE TABLE `agent_migrate_logs`  (
 -- ----------------------------
 -- Table structure for agent_payment_methods
 -- ----------------------------
+DROP TABLE IF EXISTS `agent_payment_subjects`;
+CREATE TABLE `agent_payment_subjects`  (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `agent_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '代理商ID',
+  `subject_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款主体姓名',
+  `mobile` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约手机号',
+  `id_card` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约证件号',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态：0=禁用,1=启用',
+  `create_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  `update_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_agent_status`(`agent_id`, `status`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '代理商收款主体表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for agent_payment_methods
+-- ----------------------------
 DROP TABLE IF EXISTS `agent_payment_methods`;
 CREATE TABLE `agent_payment_methods`  (
   `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `agent_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '代理商ID',
+  `subject_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '收款主体ID',
   `payment_type` enum('alipay','bank','wechat') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'alipay' COMMENT '收款方式：alipay=支付宝,bank=银行卡,wechat=微信',
   `account` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款账户',
   `account_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '收款人姓名',
@@ -542,6 +560,7 @@ CREATE TABLE `agent_payment_methods`  (
   `update_time` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `agent_id`(`agent_id`) USING BTREE,
+  INDEX `subject_id`(`subject_id`) USING BTREE,
   INDEX `payment_type`(`payment_type`) USING BTREE,
   INDEX `is_default`(`is_default`) USING BTREE,
   INDEX `status`(`status`) USING BTREE
@@ -558,6 +577,7 @@ DROP TABLE IF EXISTS `agent_payout_contracts`;
 CREATE TABLE `agent_payout_contracts`  (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
   `agent_id` int(11) NOT NULL COMMENT '代理ID',
+  `subject_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '收款主体ID',
   `provider_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '渠道标识',
   `contract_status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '签约状态 0未签约 1签约中 2已签约 3失败',
   `contract_no` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '签约单号/协议号',
@@ -574,7 +594,7 @@ CREATE TABLE `agent_payout_contracts`  (
   `create_time` int(11) NOT NULL DEFAULT 0,
   `update_time` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_agent_provider`(`agent_id`, `provider_key`) USING BTREE,
+  UNIQUE INDEX `uk_agent_provider_subject`(`agent_id`, `provider_key`, `subject_id`) USING BTREE,
   INDEX `idx_provider_status`(`provider_key`, `contract_status`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '代理打款签约绑定表' ROW_FORMAT = DYNAMIC;
 
@@ -761,6 +781,8 @@ CREATE TABLE `agents`  (
   `agent_custom_icp` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'agent_OEM ICP备案号',
   `agent_level` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal' COMMENT '代理级别',
   `secret_price_level_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '密价等级ID',
+  `secret_price_valid_start` int(11) UNSIGNED NULL DEFAULT NULL COMMENT '个人激励绑定开始时间',
+  `secret_price_valid_end` int(11) UNSIGNED NULL DEFAULT NULL COMMENT '个人激励绑定结束时间',
   `auto_markup_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否启用自动加价(0-否,1-是)',
   `auto_markup_amount` decimal(10, 2) NULL DEFAULT 0.00 COMMENT '自动加价金额(固定金额)',
   `total_orders` int(11) NOT NULL DEFAULT 0 COMMENT '总订单数',
@@ -1210,14 +1232,14 @@ CREATE TABLE `config_cloudexport`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_product_channel`(`product_id`, `api_name`, `self_channel_id`) USING BTREE,
+  INDEX `idx_product_channel`(`product_id`, `api_name`, `self_channel_id`) USING BTREE,
   INDEX `idx_product_id`(`product_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of config_cloudexport
 -- ----------------------------
-INSERT INTO `config_cloudexport` VALUES (1, 0, '', 0, '金山文档', 'order_no,order_create_time,product_name,customer_name,phone,idcard,address,id_card_photos,photo_reupload_count,custom_order_fields,production_number,iccid,puk', '{\"order_no\":\"订单号\",\"order_create_time\":\"订单创建时间\",\"product_name\":\"产品名称\",\"customer_name\":\"姓名\",\"phone\":\"电话号码\",\"idcard\":\"身份证号\",\"address\":\"收货地址\",\"id_card_photos\":\"照片\",\"photo_reupload_count\":\"照片重传次数\",\"custom_order_fields\":\"自定义表单\",\"production_number\":\"生产号码\",\"iccid\":\"ICCID\",\"puk\":\"PUK\",\"__sync_order_no\":\"订单号\",\"__sync_production_number\":\"生产号码\",\"__sync_iccid\":\"ICCID\",\"__sync_puk\":\"PUK\",\"__sync_express_company\":\"快递公司\",\"__sync_tracking_number\":\"快递单号\",\"__sync_remark\":\"备注\",\"__sync_order_status\":\"订单状态\",\"__push_webhook_url\":\"https://www.kdocs.cn/chatflow/ap***\",\"__callback_trigger_webhook_url\":\"https://www.kdocs.cn/chatflow/ap***\",\"__export_mode\":\"all\",\"__sync_status_map_0\":\"已提交\",\"__sync_status_map_1\":\"待发货\",\"__sync_status_map_2\":\"已发货\",\"__sync_status_map_3\":\"待传照片\",\"__sync_status_map_4\":\"已激活\",\"__sync_status_map_5\":\"已结算\",\"__sync_status_map_6\":\"结算失败\",\"__sync_status_map_7\":\"审核失败\",\"__table_name\":\"数据表\",\"__sheet_name\":\"表格数据\",\"__callback_cron_enabled\":1,\"__callback_cron_interval\":1,\"__callback_cron_batch_size\":50,\"__callback_cron_last_time\":\"2026-06-09 11:14:41\",\"__callback_cron_last_result\":\"成功\"}', '2026-03-26 22:31:19', '2026-06-25 14:47:14');
+INSERT INTO `config_cloudexport` VALUES (1, 0, '', 0, '金山文档', 'order_no,order_create_time,product_name,customer_name,phone,idcard,address,id_card_photos,photo_reupload_count,custom_order_fields,production_number,iccid,puk', '{\"order_no\":\"订单号\",\"order_create_time\":\"订单创建时间\",\"product_name\":\"产品名称\",\"customer_name\":\"姓名\",\"phone\":\"电话号码\",\"idcard\":\"身份证号\",\"address\":\"收货地址\",\"id_card_photos\":\"照片\",\"photo_reupload_count\":\"照片重传次数\",\"custom_order_fields\":\"自定义表单\",\"production_number\":\"生产号码\",\"iccid\":\"ICCID\",\"puk\":\"PUK\",\"__sync_order_no\":\"订单号\",\"__sync_production_number\":\"生产号码\",\"__sync_iccid\":\"ICCID\",\"__sync_puk\":\"PUK\",\"__sync_express_company\":\"快递公司\",\"__sync_tracking_number\":\"快递单号\",\"__sync_remark\":\"备注\",\"__sync_order_status\":\"订单状态\",\"__sync_fulfillment_status\":\"订单状态\",\"__sync_activation_status\":\"激活状态\",\"__sync_settlement_status\":\"结算状态\",\"__push_webhook_url\":\"https://www.kdocs.cn/chatflow/ap***\",\"__callback_trigger_webhook_url\":\"https://www.kdocs.cn/chatflow/ap***\",\"__export_mode\":\"all\",\"__sync_status_map_0\":\"已提交\",\"__sync_status_map_1\":\"待发货\",\"__sync_status_map_2\":\"已发货\",\"__sync_status_map_3\":\"待传照片\",\"__sync_status_map_7\":\"审核失败\",\"__table_name\":\"数据表\",\"__sheet_name\":\"表格数据\",\"__callback_cron_enabled\":1,\"__callback_cron_interval\":1,\"__callback_cron_batch_size\":50,\"__callback_cron_last_time\":\"2026-06-09 11:14:41\",\"__callback_cron_last_result\":\"成功\"}', '2026-03-26 22:31:19', '2026-06-25 14:47:14');
 
 -- ----------------------------
 -- Table structure for config_h5
@@ -1696,9 +1718,12 @@ CREATE TABLE `order`  (
   `product_id` int(11) NULL DEFAULT NULL COMMENT '对接产品ID',
   `product_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '商品名称',
   `product_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '产品图片路径',
-  `order_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '0' COMMENT '订单状态(0-已提交,1-待发货,2-已发货,3-待传照片,4-已激活,5-已结算,6-结算失败,7-审核失败)',
+  `fulfillment_status` tinyint(3) UNSIGNED NOT NULL DEFAULT 2 COMMENT '订单状态：0待支付,1支付超时,2已提交,3初步审核,9信息待补充,4待发货,5已发货,6待传照片,7新照待审核,8审核失败,100订单已完成,101订单已取消',
+  `activation_status` tinyint(3) UNSIGNED NOT NULL DEFAULT 0 COMMENT '激活状态：0未激活,1已激活,2激活且充值',
+  `settlement_status` tinyint(3) UNSIGNED NOT NULL DEFAULT 0 COMMENT '结算状态：0未结算,1待结算,2已结算,3拒绝结算,4佣金追溯',
+  `refund_status` tinyint(3) UNSIGNED NOT NULL DEFAULT 0 COMMENT '退款状态：0未申请退款,1退款中,2已退款,3拒绝退款',
   `express_company` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '物流公司',
-  `tracking_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '物流单号',
+  `tracking_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '物流单号',
   `customer_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '客户姓名',
   `phone` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '电话号码',
   `idcard` varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '身份证号码',
@@ -1776,15 +1801,19 @@ CREATE TABLE `order`  (
   INDEX `shop_code`(`shop_code`) USING BTREE,
   INDEX `agent_id`(`agent_id`) USING BTREE,
   INDEX `product_id`(`product_id`) USING BTREE,
-  INDEX `order_status`(`order_status`) USING BTREE,
-  INDEX `idx_create_time_status`(`create_time`, `order_status`) USING BTREE,
-  INDEX `idx_status_create_time`(`order_status`, `create_time`) USING BTREE,
+  INDEX `idx_fulfillment_status`(`fulfillment_status`) USING BTREE,
+  INDEX `idx_activation_status`(`activation_status`) USING BTREE,
+  INDEX `idx_settlement_status`(`settlement_status`) USING BTREE,
+  INDEX `idx_refund_status`(`refund_status`) USING BTREE,
+  INDEX `idx_order_state_combo`(`fulfillment_status`, `activation_status`, `settlement_status`, `refund_status`, `create_time`) USING BTREE,
+  INDEX `idx_create_time_status`(`create_time`, `fulfillment_status`, `activation_status`, `settlement_status`) USING BTREE,
+  INDEX `idx_status_create_time`(`fulfillment_status`, `activation_status`, `settlement_status`, `create_time`) USING BTREE,
   INDEX `idx_customer_name`(`customer_name`) USING BTREE,
   INDEX `idx_phone`(`phone`) USING BTREE,
   INDEX `idx_shop_code_create_time`(`shop_code`, `create_time`) USING BTREE,
   INDEX `idx_agent_create_time`(`agent_id`, `create_time`) USING BTREE,
   INDEX `idx_order_no_prefix`(`order_no`(20)) USING BTREE,
-  INDEX `idx_multi_filter`(`order_status`, `shop_code`, `create_time`) USING BTREE,
+  INDEX `idx_multi_filter`(`fulfillment_status`, `activation_status`, `settlement_status`, `shop_code`, `create_time`) USING BTREE,
   INDEX `idx_agent_change_time`(`agent_change_time`) USING BTREE,
   INDEX `idx_api_config_id`(`api_config_id`) USING BTREE,
   INDEX `idx_flag_color`(`flag_color`) USING BTREE,
@@ -1800,10 +1829,10 @@ CREATE TABLE `order`  (
   INDEX `idx_iccid`(`iccid`) USING BTREE,
   INDEX `idx_api_pay_status`(`api_pay_status`) USING BTREE,
   INDEX `idx_api_pay_log_id`(`api_pay_log_id`) USING BTREE,
-  INDEX `idx_order_limit_name`(`customer_name`, `product_id`, `order_status`, `card_type`, `pay_status`) USING BTREE,
-  INDEX `idx_order_limit_phone`(`phone`, `product_id`, `order_status`, `card_type`, `pay_status`) USING BTREE,
-  INDEX `idx_order_limit_idcard`(`idcard`, `product_id`, `order_status`, `card_type`, `pay_status`) USING BTREE,
-  INDEX `idx_order_limit_production`(`product_id`, `production_number`, `order_status`, `card_type`, `pay_status`) USING BTREE
+  INDEX `idx_order_limit_name`(`customer_name`, `product_id`, `fulfillment_status`, `card_type`, `pay_status`) USING BTREE,
+  INDEX `idx_order_limit_phone`(`phone`, `product_id`, `fulfillment_status`, `card_type`, `pay_status`) USING BTREE,
+  INDEX `idx_order_limit_idcard`(`idcard`, `product_id`, `fulfillment_status`, `card_type`, `pay_status`) USING BTREE,
+  INDEX `idx_order_limit_production`(`product_id`, `production_number`, `fulfillment_status`, `card_type`, `pay_status`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
@@ -1853,16 +1882,28 @@ CREATE TABLE `order_batch_item`  (
   `order_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '订单号',
   `old_status` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '原状态',
   `new_status` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '新状态',
+  `old_fulfillment_status` tinyint(3) NULL DEFAULT NULL COMMENT '原订单状态',
+  `new_fulfillment_status` tinyint(3) NULL DEFAULT NULL COMMENT '新订单状态',
+  `old_activation_status` tinyint(3) NULL DEFAULT NULL COMMENT '原激活状态',
+  `new_activation_status` tinyint(3) NULL DEFAULT NULL COMMENT '新激活状态',
+  `old_settlement_status` tinyint(3) NULL DEFAULT NULL COMMENT '原结算状态',
+  `new_settlement_status` tinyint(3) NULL DEFAULT NULL COMMENT '新结算状态',
   `old_jh_time` datetime NULL DEFAULT NULL COMMENT '原激活时间',
   `new_jh_time` datetime NULL DEFAULT NULL COMMENT '本批次写入激活时间',
+  `old_js_time` datetime NULL DEFAULT NULL COMMENT '原结算时间',
+  `new_js_time` datetime NULL DEFAULT NULL COMMENT '本批次写入结算时间',
+  `old_recharge_status` varchar(20) NULL DEFAULT NULL COMMENT '原充值状态',
+  `old_recharge_amount` decimal(10,2) NULL DEFAULT NULL COMMENT '原充值金额',
+  `new_recharge_amount` decimal(10,2) NULL DEFAULT NULL COMMENT '新充值金额',
+  `commission_log_ids` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '本批次生成或结算的佣金流水ID',
   `old_remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '原备注',
   `new_remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '新备注',
   `old_production_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '原生产号码',
   `new_production_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '新生产号码',
   `old_express_company` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '原物流公司',
   `new_express_company` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '新物流公司',
-  `old_tracking_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '原物流单号',
-  `new_tracking_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '新物流单号',
+  `old_tracking_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '原物流单号',
+  `new_tracking_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '新物流单号',
   `execute_status` tinyint(1) NULL DEFAULT 0 COMMENT '执行状态(0-待处理,1-成功,2-失败,3-已撤回)',
   `fail_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '失败原因',
   `execute_time` datetime NULL DEFAULT NULL COMMENT '执行时间',
@@ -2129,6 +2170,7 @@ CREATE TABLE `payout_provider_configs`  (
 -- ----------------------------
 INSERT INTO `payout_provider_configs` VALUES (1, 'yun_account', '云账户打款', 0, 0, 0.00, 500.00, '{\"dealer_id\":\"\",\"broker_id\":\"\",\"base_url\":\"https:\\/\\/api-service.yunzhanghu.com\\/\",\"private_key_path\":\"\",\"platform_public_key_path\":\"\",\"notify_url\":\"https:\\/\\/t32x4czs.beesnat.com\\/api\\/payout\\/callback\",\"retry_task_enabled\":0,\"retry_max_count\":51,\"retry_cooldown_seconds\":3001,\"auto_channel_wechat\":1,\"auto_channel_alipay\":1,\"auto_channel_bankcard\":1,\"sign_required_wechat\":1,\"sign_required_alipay\":1,\"sign_required_bankcard\":1,\"app_key\":\"\",\"app_des3_key\":\"\",\"app_private_key\":\"\",\"yzh_public_key\":\"\",\"sign_type\":\"sha256\"}', 8.00, 1776078669, '', 1774720630, 1782370792);
 INSERT INTO `payout_provider_configs` VALUES (2, 'alipay', '支付宝自动打款', 0, 0, 0.00, 0.00, '{\"retry_task_enabled\":0,\"retry_max_count\":5,\"retry_cooldown_seconds\":300,\"order_title\":\"\",\"transfer_remark\":\"\",\"payee_identity_type\":\"\",\"app_id\":\"\",\"private_key\":\"\",\"app_cert_path\":\"\",\"alipay_cert_path\":\"\",\"alipay_root_cert_path\":\"\"}', 0.00, 0, '', 1776832052, 1782370812);
+INSERT INTO `payout_provider_configs` VALUES (3, 'sby', '身边云佣金保', 0, 0, 0.00, 0.00, '{\"base_url\":\"\",\"mer_id\":\"\",\"api_key\":\"\",\"merchant_private_key\":\"\",\"platform_public_key\":\"\",\"api_version\":\"V1.0\",\"encrypt_type\":\"DES\",\"provider_id\":\"\",\"task_id\":\"\",\"appid\":\"\",\"sign_notify_url\":\"\",\"payout_notify_url\":\"\",\"sign_redirect_url\":\"\",\"face_redirect_url\":\"\",\"redirect_button_name\":\"返回\",\"redirect_type\":\"NAVIGATE_BACK\",\"payment_memo\":\"业务服务\",\"face_required\":1,\"id_card_photos_required\":0,\"retry_task_enabled\":1,\"retry_max_count\":5,\"retry_cooldown_seconds\":300,\"auto_channel_wechat\":1,\"auto_channel_alipay\":1,\"auto_channel_bankcard\":1,\"sign_required_wechat\":1,\"sign_required_alipay\":1,\"sign_required_bankcard\":1}', 0.00, 0, '', 0, 0);
 
 -- ----------------------------
 -- Table structure for payout_trade_logs
@@ -2232,6 +2274,8 @@ CREATE TABLE `product`  (
   `number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '对接编号',
   `external_order_url` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '第三方下单地址',
   `external_order_tip` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '第三方选号提示文案',
+  `external_order_guide_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '第三方下单是否显示操作示例',
+  `external_order_guide_images` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '第三方下单操作示例图片JSON',
   `api_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '对接上游名称',
   `api_config_id` int(11) NULL DEFAULT 0 COMMENT 'API配置ID（用于多配置API）',
   `self_channel_id` int(11) NOT NULL DEFAULT 0 COMMENT '自营渠道ID，0=未设置',
@@ -2280,6 +2324,8 @@ CREATE TABLE `product`  (
   `is_four_photo` tinyint(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否需要第四证:0=否,1=是',
   `four_photo_title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT '' COMMENT '第四照标题',
   `four_photo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT '' COMMENT '第四照查询链接',
+  `four_photo_guide_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '四证查询是否显示操作示例',
+  `four_photo_guide_images` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '四证查询操作示例图片JSON',
   `card_type` tinyint(1) NOT NULL DEFAULT 0 COMMENT '卡类型：0免费卡 1付费卡',
   `product_category` tinyint(1) NOT NULL DEFAULT 0 COMMENT '商品分类：0流量卡，1宽带',
   `category_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '产品分类ID',
@@ -3078,5 +3124,38 @@ CREATE TABLE `withdraws`  (
 -- ----------------------------
 DROP VIEW IF EXISTS `v_enabled_payments`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `v_enabled_payments` AS select `pm`.`payment_type` AS `payment_type`,`pm`.`payment_name` AS `payment_name`,`pm`.`sort_order` AS `sort_order`,`pm`.`icon_url` AS `icon_url`,`pm`.`description` AS `description`,group_concat(concat(`pc`.`config_key`,':',`pc`.`config_value`) order by `pc`.`config_key` ASC separator '|') AS `configs` from (`payment_methods` `pm` left join `payment_configs` `pc` on((`pm`.`payment_type` = `pc`.`payment_type`))) where (`pm`.`is_enabled` = 1) group by `pm`.`payment_type`,`pm`.`payment_name`,`pm`.`sort_order`,`pm`.`icon_url`,`pm`.`description` order by `pm`.`sort_order`;
+
+-- ----------------------------
+-- Table structure for team incentive policies
+-- ----------------------------
+DROP TABLE IF EXISTS `agent_team_incentives`;
+DROP TABLE IF EXISTS `team_incentive_policies`;
+CREATE TABLE `team_incentive_policies` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `policy_name` varchar(100) NOT NULL DEFAULT '' COMMENT '团队激励政策名称',
+  `icon` varchar(500) NULL DEFAULT '' COMMENT '等级图片URL',
+  `reward_amount` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '每单固定奖励',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `create_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  `update_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_policy_name`(`policy_name`) USING BTREE,
+  INDEX `idx_status`(`status`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '团队激励政策' ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `agent_team_incentives` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `agent_id` int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT '团队负责代理ID',
+  `policy_id` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  `valid_start` int(11) UNSIGNED NULL DEFAULT NULL COMMENT '团队激励绑定开始时间',
+  `valid_end` int(11) UNSIGNED NULL DEFAULT NULL COMMENT '团队激励绑定结束时间',
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `create_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  `update_time` int(11) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_agent_id`(`agent_id`) USING BTREE,
+  INDEX `idx_policy_status`(`policy_id`, `status`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '代理团队激励绑定' ROW_FORMAT = DYNAMIC;
 
 SET FOREIGN_KEY_CHECKS = 1;

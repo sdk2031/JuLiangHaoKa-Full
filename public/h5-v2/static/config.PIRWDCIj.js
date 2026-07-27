@@ -1,0 +1,1 @@
+import{ah as o}from"./index-RqYOhpvs.js";const i=(i="",e={})=>o({url:i?`/openapi/configh5/getConfig?key=${i}`:"/openapi/configh5/getConfig",method:"GET",...e}),e=()=>o({url:"/openapi/system/config",method:"GET",showError:!1}),n=()=>o({url:"/openapi/configh5/getQuickLoginConfig",method:"GET",showError:!1});export{i as a,e as b,n as g};

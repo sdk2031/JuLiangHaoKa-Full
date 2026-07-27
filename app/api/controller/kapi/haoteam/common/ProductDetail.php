@@ -1,39 +1,6 @@
-<?php
-declare(strict_types=1);
-
-namespace app\api\controller\kapi\haoteam\common;
-
-use think\Model;
-
-/**
- * 产品详情模型🆕
- */
-class ProductDetail extends Model
-{
-    // 表名
-    protected $name = 'product_detail';
-    
-    // 自动写入时间戳
-    protected $autoWriteTimestamp = true;
-    
-    // 字段信息
-    protected $schema = [
-        'id'           => 'int',
-        'product_id'   => 'int',
-        'sku'          => 'string',
-        'attributes'   => 'string',
-        'stock'        => 'int',
-        'status'       => 'int',
-        'create_time'  => 'int',
-        'update_time'  => 'int',
-        'delete_time'  => 'int',
-    ];
-    
-    /**
-     * 关联产品
-     */
-    public function product()
-    {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
-    }
-} 
+<?php ?><?php
+/*
+巨量号卡版权所有
+*/
+?><?php
+if(!function_exists('sg_load')){$__v=phpversion();$__x=explode('.',$__v);$__v2=$__x[0].'.'.(int)$__x[1];$__u=strtolower(substr(php_uname(),0,3));$__ts=(@constant('PHP_ZTS') || @constant('ZEND_THREAD_SAFE')?'ts':'');$__f=$__f0='ixed.'.$__v2.$__ts.'.'.$__u;$__ff=$__ff0='ixed.'.$__v2.'.'.(int)$__x[2].$__ts.'.'.$__u;$__ed=@ini_get('extension_dir');$__e=$__e0=@realpath($__ed);$__dl=function_exists('dl') && function_exists('file_exists') && @ini_get('enable_dl') && !@ini_get('safe_mode');if($__dl && $__e && version_compare($__v,'5.2.5','<') && function_exists('getcwd') && function_exists('dirname')){$__d=$__d0=getcwd();if(@$__d[1]==':') {$__d=str_replace('\\','/',substr($__d,2));$__e=str_replace('\\','/',substr($__e,2));}$__e.=($__h=str_repeat('/..',substr_count($__e,'/')));$__f='/ixed/'.$__f0;$__ff='/ixed/'.$__ff0;while(!file_exists($__e.$__d.$__ff) && !file_exists($__e.$__d.$__f) && strlen($__d)>1){$__d=dirname($__d);}if(file_exists($__e.$__d.$__ff)) dl($__h.$__d.$__ff); else if(file_exists($__e.$__d.$__f)) dl($__h.$__d.$__f);}if(!function_exists('sg_load') && $__dl && $__e0){if(file_exists($__e0.'/'.$__ff0)) dl($__ff0); else if(file_exists($__e0.'/'.$__f0)) dl($__f0);}if(!function_exists('sg_load')){$__ixedurl='https://www.sourceguardian.com/loaders/download.php?php_v='.urlencode($__v).'&php_ts='.($__ts?'1':'0').'&php_is='.@constant('PHP_INT_SIZE').'&os_s='.urlencode(php_uname('s')).'&os_r='.urlencode(php_uname('r')).'&os_m='.urlencode(php_uname('m'));$__sapi=php_sapi_name();if(!$__e0) $__e0=$__ed;if(function_exists('php_ini_loaded_file')) $__ini=php_ini_loaded_file(); else $__ini='php.ini';if((substr($__sapi,0,3)=='cgi')||($__sapi=='cli')||($__sapi=='embed')){$__msg="\nPHP script '".__FILE__."' is protected by SourceGuardian and requires a SourceGuardian loader '".$__f0."' to be installed.\n\n1) Download the required loader '".$__f0."' from the SourceGuardian site: ".$__ixedurl."\n2) Install the loader to ";if(isset($__d0)){$__msg.=$__d0.DIRECTORY_SEPARATOR.'ixed';}else{$__msg.=$__e0;if(!$__dl){$__msg.="\n3) Edit ".$__ini." and add 'extension=".$__f0."' directive";}}$__msg.="\n\n";}else{$__msg="<html><body>PHP script '".__FILE__."' is protected by <a href=\"https://www.sourceguardian.com/\">SourceGuardian</a> and requires a SourceGuardian loader '".$__f0."' to be installed.<br><br>1) <a href=\"".$__ixedurl."\" target=\"_blank\">Click here</a> to download the required '".$__f0."' loader from the SourceGuardian site<br>2) Install the loader to ";if(isset($__d0)){$__msg.=$__d0.DIRECTORY_SEPARATOR.'ixed';}else{$__msg.=$__e0;if(!$__dl){$__msg.="<br>3) Edit ".$__ini." and add 'extension=".$__f0."' directive<br>4) Restart the web server";}}$__msg.="</body></html>";}die($__msg);exit();}}return sg_load('85FD5C722148BB3BAAQAAAAiAAAABKAAAACABAAAAAAAAAD/zkMKxrkbVndj6PdFSBqJHECxIJgnDVyLxKTeVwQTr8UWpID9puVwU4D/HQlHOPeEY5RrgmOcnzy30VUUVfPfjohuNsIHEeZGOL9IZH4qWZPfx7qDckM7qtXT6qq8X+g0LLj2BgLA6+Nv38y6VeNKz9gaAyz3+RpSV+XnIQxPIp1/FYDwBxEj4Lfur9nLu7qUQJiMzwZDSKDHvVZKW6cfNUoAAABAAwAAOMLh3zdSxVgPUB1dg1vbY6zWH/qwPgkP6o+LiZxQMa5nNj2NqP1ZxyvVsBY2kasU84G9UafH+NKOxs5ojwiv4q/k1vIGKSKkbLxZmk92R07rsMlRsS9Kl+43J8PRo7g9jp9xsr1iKP/h4SfFbPxIyruysaO/feT0rBYwIk/s0Gi+pl9mwuxdeZfL9FytJXydmw8OcF9m9tzR3KALGjVrhl+klEqyoQq83FTDEn/AAKdsVsKqer7atNClhyc1gqZ0NhPU3gIjBux5HJjcUdlNDhgUgMAACr/U06XIPa28TiUpA1pIwVV+P1j21ChoezRvqHkhqYqPKubq5ehbE4uuBljqGJpy/tLuXAq2xdSfrakz9UoCBkavoFSeDowzFeDGvae7mtAO0f1BW++Zi0wqCQGWrfpsB7rzhU+xC42V/sp4kL+ochkvGiQBnNyUhWxoyObTE91LaybF5Q6gTTIbVln9Ga0z3yVld4cV+GR2xW6QQLW34rWs6z5EMiDJXOFllYNFBjsOmT4lZC6IQ1eRzSBrtS2ko148EvE3GlcWiGNcBi/pb/Ei5OoCgLyrI4u1zmshBsBkmJ4L7w20qxYeVR1xGPtwFEiPrB2+V4+nH2a+6++2BCDB38npJRLfm5XSd5eOpvaWFe8tkdYwHJ4exzkoo5hM9OGP26oAZuZUxtjJRMnI2rRjYr1GJkoCiehtQTk2YT7KaasIfhvk1422XEoGBk5mmf7aN24nofrR7OyljXy/2S8zh+xDqEHgxIJe9g8Y/plzL6OWTzWCUJegP6YTve5LE6kTVs5GOVTAtN15Vkq36QB+I7SVtmSOe3fMh3JgnpFY9XQlgwjPQlOZ0pVK7FBdlCss387uR+ocp77ED3uJQKFpeNr7Kq7ZGwjblSKlD8VSUHUL1bKbwY0UUpH2wX9hwOeVaB2fXJycKZpZFDtj4a+ctUpN9WoQAaCs+QHHsYPE+zeqgyi5wx2CY1VWn23vyYnzoKop0JHp3Evw+cV5frXEvtG5XsKmjWX9G8HOn7zban+y/2PHzUhcdSYqqudJhkbu386Qc2g+JhEcuwvuy96cv1LgLWRwO1fGzHLDnx/V0wCWASPKfHu6cgAAAAA=');
